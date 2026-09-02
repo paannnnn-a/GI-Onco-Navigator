@@ -33,3 +33,6 @@ prefers the latest in-scope, reviewed edition and surfaces conflicts or supersed
 
 Only approved passages may support patient-facing clinical navigation in production.
 
+Web sources must use a public HTTPS URL, retain a content hash and section locator, and remain
+quarantined after ingestion. A trusted publisher does not remove the need for copyright,
+extraction-quality, medical-accuracy, and patient-readability review.
