@@ -8,13 +8,17 @@ def test_patient_round_trip_and_safe_empty_answer(tmp_path, monkeypatch) -> None
     database = Database(tmp_path / "api.db")
     monkeypatch.setattr(main, "database", database)
     client = TestClient(main.app)
+    access = client.post("/api/v1/patient-access").json()
     patient = {
-        "patient_id": "patient-test",
+        "patient_id": access["patient_id"],
         "cancer_type": "colon",
         "surgery_date": "2026-08-20",
     }
-    assert client.put("/api/v1/patients/patient-test", json=patient).status_code == 200
-    assert client.get("/api/v1/patients/patient-test").json()["cancer_type"] == "colon"
+    url = f"/api/v1/patients/{access['patient_id']}"
+    headers = {"Authorization": f"Bearer {access['access_token']}"}
+    assert client.put(url, json=patient).status_code == 401
+    assert client.put(url, json=patient, headers=headers).status_code == 200
+    assert client.get(url, headers=headers).json()["cancer_type"] == "colon"
     response = client.post(
         "/api/v1/navigation/question",
         json={"question": "复诊时需要准备什么？", "patient": patient},

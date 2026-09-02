@@ -1,9 +1,11 @@
 import secrets
+from datetime import UTC, datetime
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from backend.app.auth import InvalidPatientToken, issue_patient_token, verify_patient_token
 from backend.app.config import get_settings
 from backend.app.schemas import (
     EvidenceReviewRequest,
@@ -48,9 +50,25 @@ class QuestionResponse(BaseModel):
     assessment: JourneyAssessment
 
 
+class PatientAccess(BaseModel):
+    patient_id: str
+    access_token: str
+    expires_at: datetime
+
+
 def require_admin(x_admin_key: str = Header(default="")) -> None:
     if not settings.admin_api_key or not secrets.compare_digest(x_admin_key, settings.admin_api_key):
         raise HTTPException(status_code=401, detail="valid admin key required")
+
+
+def require_patient(patient_id: str, authorization: str = Header(default="")) -> None:
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="patient access token required")
+    try:
+        verify_patient_token(token, settings.secret_key, patient_id)
+    except InvalidPatientToken as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @app.get("/health")
@@ -58,7 +76,18 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.put("/api/v1/patients/{patient_id}", response_model=PatientProfile)
+@app.post("/api/v1/patient-access", response_model=PatientAccess, status_code=201)
+def create_patient_access() -> PatientAccess:
+    patient_id, token, expires_at = issue_patient_token(settings.secret_key)
+    database.log_event("patient_access_issued", patient_id, {"expires_at": expires_at})
+    return PatientAccess(
+        patient_id=patient_id, access_token=token, expires_at=datetime.fromtimestamp(expires_at, UTC)
+    )
+
+
+@app.put(
+    "/api/v1/patients/{patient_id}", response_model=PatientProfile, dependencies=[Depends(require_patient)]
+)
 def save_patient(patient_id: str, patient: PatientProfile) -> PatientProfile:
     if patient_id != patient.patient_id:
         raise HTTPException(status_code=400, detail="patient_id in path and body must match")
@@ -67,7 +96,9 @@ def save_patient(patient_id: str, patient: PatientProfile) -> PatientProfile:
     return patient
 
 
-@app.get("/api/v1/patients/{patient_id}", response_model=PatientProfile)
+@app.get(
+    "/api/v1/patients/{patient_id}", response_model=PatientProfile, dependencies=[Depends(require_patient)]
+)
 def get_patient(patient_id: str) -> PatientProfile:
     patient = database.get_patient(patient_id)
     if patient is None:

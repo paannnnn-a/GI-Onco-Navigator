@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +16,15 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def reject_development_secrets_in_production(self) -> "Settings":
+        if self.app_env.lower() == "production" and (
+            self.secret_key == "change-me-before-production"
+            or self.admin_api_key == "change-me-before-production"
+        ):
+            raise ValueError("production requires unique SECRET_KEY and ADMIN_API_KEY values")
+        return self
 
     @property
     def origins(self) -> list[str]:
