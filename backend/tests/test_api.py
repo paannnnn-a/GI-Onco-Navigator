@@ -20,6 +20,21 @@ def test_patient_round_trip_and_safe_empty_answer(tmp_path, monkeypatch) -> None
     assert client.put(url, json=patient).status_code == 401
     assert client.put(url, json=patient, headers=headers).status_code == 200
     assert client.get(url, headers=headers).json()["cancer_type"] == "colon"
+    reminder = client.post(
+        f"{url}/reminders",
+        json={
+            "title": "复诊事项", "due_at": "2026-09-10T09:00:00+08:00",
+            "source_note": "门诊预约通知",
+        },
+        headers=headers,
+    )
+    assert reminder.status_code == 201
+    reminder_id = reminder.json()["reminder_id"]
+    assert len(client.get(f"{url}/reminders", headers=headers).json()) == 1
+    completed = client.patch(
+        f"{url}/reminders/{reminder_id}", json={"status": "completed"}, headers=headers
+    )
+    assert completed.json()["status"] == "completed"
     response = client.post(
         "/api/v1/navigation/question",
         json={"question": "复诊时需要准备什么？", "patient": patient},

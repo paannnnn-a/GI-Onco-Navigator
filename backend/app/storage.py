@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS patients (
   payload_json TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS patient_reminders (
+  reminder_id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL REFERENCES patients(patient_id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  due_at TEXT NOT NULL,
+  source_note TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_patient_reminders_due ON patient_reminders(patient_id, due_at);
 CREATE TABLE IF NOT EXISTS sources (
   source_id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -174,7 +184,58 @@ class Database:
     def delete_patient(self, patient_id: str) -> bool:
         with self.connect() as connection:
             cursor = connection.execute("DELETE FROM patients WHERE patient_id = ?", (patient_id,))
+            connection.execute("DELETE FROM audit_events WHERE subject_id = ?", (patient_id,))
         return cursor.rowcount > 0
+
+    def count_audit_events(self, subject_id: str | None) -> int:
+        with self.connect() as connection:
+            if subject_id is None:
+                row = connection.execute(
+                    "SELECT COUNT(*) FROM audit_events WHERE subject_id IS NULL"
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    "SELECT COUNT(*) FROM audit_events WHERE subject_id = ?", (subject_id,)
+                ).fetchone()
+        return int(row[0])
+
+    def add_reminder(self, reminder: dict[str, object]) -> dict[str, object]:
+        with self.connect() as connection:
+            try:
+                connection.execute(
+                    """INSERT INTO patient_reminders(
+                      reminder_id,patient_id,title,due_at,source_note,status
+                    ) VALUES (:reminder_id,:patient_id,:title,:due_at,:source_note,:status)""",
+                    reminder,
+                )
+            except sqlite3.IntegrityError as exc:
+                raise KeyError(str(reminder["patient_id"])) from exc
+            row = connection.execute(
+                "SELECT * FROM patient_reminders WHERE reminder_id = ?", (reminder["reminder_id"],)
+            ).fetchone()
+        return dict(row)
+
+    def list_reminders(self, patient_id: str) -> list[dict[str, object]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM patient_reminders WHERE patient_id = ? ORDER BY due_at, created_at",
+                (patient_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def update_reminder_status(
+        self, patient_id: str, reminder_id: str, status: str
+    ) -> dict[str, object] | None:
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE patient_reminders SET status = ? WHERE reminder_id = ? AND patient_id = ?",
+                (status, reminder_id, patient_id),
+            )
+            row = connection.execute(
+                "SELECT * FROM patient_reminders WHERE reminder_id = ? AND patient_id = ?",
+                (reminder_id, patient_id),
+            ).fetchone()
+        return dict(row) if row else None
 
     def add_source(self, source: dict[str, object]) -> None:
         values = {

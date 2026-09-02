@@ -53,6 +53,16 @@
 .secondary { border: 1px solid #185b45; border-radius: 9px; padding: .8rem 1rem; background: white; color: #185b45; font-weight: 700; cursor: pointer; }
 .danger-link { border: 0; background: transparent; color: #922d2d; text-decoration: underline; cursor: pointer; text-align: left; }
 .record-status { grid-column: 1 / -1; padding: .8rem; border-radius: 9px; background: #e5f5eb; color: #185b45; }
+.reminder-editor { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; padding: 1rem; border: 1px solid #d5e2dc; border-radius: 12px; }
+.reminder-editor h3, .reminder-editor p { grid-column: 1 / -1; margin: 0; }
+.reminder-editor p { color: #6b7d76; font-size: .85rem; }
+.reminder-editor input { padding: .75rem; border: 1px solid #bdccc5; border-radius: 9px; font: inherit; }
+.reminder-editor article { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 1rem; padding-top: .7rem; border-top: 1px solid #dce5e0; }
+.reminder-editor article div { display: grid; gap: .2rem; }
+.reminder-editor article small { color: #6b7d76; }
+.reminder-editor article[data-complete="true"] { opacity: .6; text-decoration: line-through; }
+.reminder-editor article button { border: 0; background: transparent; color: #185b45; cursor: pointer; }
+@media (max-width: 650px) { .reminder-editor { grid-template-columns: 1fr; } .reminder-editor h3, .reminder-editor p, .reminder-editor article { grid-column: 1; } }
 .facility-box { margin-top: 1.2rem; padding: 1.4rem; border: 1px solid #d5e2dc; border-radius: 16px; background: #fbfdfc; display: grid; gap: .8rem; }
 .facility-box h3, .facility-box p { margin: 0; }
 .facility-box > input { padding: .85rem; border: 1px solid #bdccc5; border-radius: 9px; font: inherit; }

@@ -25,6 +25,9 @@ from backend.app.schemas import (
     NavigationAnswer,
     PatientNavigationPlan,
     PatientProfile,
+    PatientReminder,
+    ReminderCreate,
+    ReminderStatusUpdate,
     SourceLifecycleRecord,
     SourceLifecycleRequest,
 )
@@ -170,8 +173,55 @@ def get_patient(patient_id: str) -> PatientProfile:
 )
 def delete_patient(patient_id: str) -> Response:
     deleted = database.delete_patient(patient_id)
-    database.log_event("patient_deleted", patient_id, {"record_existed": deleted})
+    database.log_event("patient_deleted", None, {"record_existed": deleted})
     return Response(status_code=204)
+
+
+@app.post(
+    "/api/v1/patients/{patient_id}/reminders",
+    response_model=PatientReminder,
+    status_code=201,
+    dependencies=[Depends(require_patient)],
+)
+def create_reminder(patient_id: str, reminder: ReminderCreate) -> PatientReminder:
+    try:
+        row = database.add_reminder(
+            {
+                "reminder_id": str(uuid4()), "patient_id": patient_id,
+                "title": reminder.title, "due_at": reminder.due_at.isoformat(),
+                "source_note": reminder.source_note, "status": "pending",
+            }
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="patient record must be saved first") from exc
+    database.log_event("reminder_created", patient_id, {"due_at": reminder.due_at.isoformat()})
+    return PatientReminder.model_validate(row)
+
+
+@app.get(
+    "/api/v1/patients/{patient_id}/reminders",
+    response_model=list[PatientReminder],
+    dependencies=[Depends(require_patient)],
+)
+def list_reminders(patient_id: str) -> list[PatientReminder]:
+    return [PatientReminder.model_validate(row) for row in database.list_reminders(patient_id)]
+
+
+@app.patch(
+    "/api/v1/patients/{patient_id}/reminders/{reminder_id}",
+    response_model=PatientReminder,
+    dependencies=[Depends(require_patient)],
+)
+def update_reminder(
+    patient_id: str, reminder_id: str, update: ReminderStatusUpdate
+) -> PatientReminder:
+    row = database.update_reminder_status(patient_id, reminder_id, update.status)
+    if row is None:
+        raise HTTPException(status_code=404, detail="reminder not found")
+    database.log_event(
+        "reminder_status_changed", patient_id, {"reminder_id": reminder_id, "status": update.status}
+    )
+    return PatientReminder.model_validate(row)
 
 
 @app.get("/api/v1/evidence/sources")

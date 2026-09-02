@@ -1,5 +1,5 @@
 import { ArrowRight, BookOpen, FileCheck2, HeartPulse, ShieldCheck } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type CancerType = "colon" | "rectal" | "gastric";
 type Profile = {
@@ -37,6 +37,7 @@ type FacilityResponse = {
   notice: string;
 };
 type PatientAccess = { patient_id: string; access_token: string; expires_at: string };
+type PatientReminder = { reminder_id: string; title: string; due_at: string; source_note: string; status: string };
 
 const pathways: Record<CancerType, { title: string; subtitle: string }> = {
   colon: { title: "结肠癌术后导航", subtitle: "整理病理信息、定位阶段并准备复诊问题" },
@@ -88,12 +89,23 @@ export function App() {
     catch { return null; }
   });
   const [recordStatus, setRecordStatus] = useState("");
+  const [reminderTitle, setReminderTitle] = useState("");
+  const [reminderDate, setReminderDate] = useState("");
+  const [reminderSource, setReminderSource] = useState("");
+  const [reminders, setReminders] = useState<PatientReminder[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const selected = useMemo(() => pathways[cancerType], [cancerType]);
+
+  useEffect(() => {
+    if (!patientAccess) return;
+    fetch(`/api/v1/patients/${patientAccess.patient_id}/reminders`, {
+      headers: { "Authorization": `Bearer ${patientAccess.access_token}` },
+    }).then((response) => response.ok ? response.json() : []).then(setReminders).catch(() => undefined);
+  }, [patientAccess]);
 
   function profile(): Profile {
     return {
@@ -185,6 +197,33 @@ export function App() {
     finally { setLoading(false); }
   }
 
+  async function addReminder() {
+    if (!patientAccess || !reminderTitle.trim() || !reminderDate || !reminderSource.trim()) return;
+    setLoading(true); setError("");
+    try {
+      const response = await fetch(`/api/v1/patients/${patientAccess.patient_id}/reminders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${patientAccess.access_token}` },
+        body: JSON.stringify({ title: reminderTitle, due_at: new Date(reminderDate).toISOString(), source_note: reminderSource }),
+      });
+      if (!response.ok) throw new Error("复诊事项保存失败，请确认档案已保存。");
+      const reminder = await response.json() as PatientReminder;
+      setReminders((items) => [...items, reminder].sort((a, b) => a.due_at.localeCompare(b.due_at)));
+      setReminderTitle(""); setReminderDate(""); setReminderSource("");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "保存失败"); }
+    finally { setLoading(false); }
+  }
+
+  async function completeReminder(reminder: PatientReminder) {
+    if (!patientAccess) return;
+    const response = await fetch(`/api/v1/patients/${patientAccess.patient_id}/reminders/${reminder.reminder_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${patientAccess.access_token}` },
+      body: JSON.stringify({ status: "completed" }),
+    });
+    if (response.ok) setReminders((items) => items.map((item) => item.reminder_id === reminder.reminder_id ? { ...item, status: "completed" } : item));
+  }
+
   return (
     <main>
       <header className="topbar">
@@ -228,6 +267,7 @@ export function App() {
             <button className="secondary" onClick={saveRecord} disabled={loading || !saveConsent}>保存我的档案</button>
             {patientAccess && <button className="danger-link" onClick={deleteRecord} disabled={loading}>删除服务器档案</button>}
             {recordStatus && <div className="record-status" role="status">{recordStatus}</div>}
+            {patientAccess && <section className="reminder-editor"><h3>按诊疗团队安排记录复诊事项</h3><p>平台不会自行计算医学随访时间；请只录入预约通知或诊疗团队已经确认的日期。</p><input value={reminderTitle} onChange={(event) => setReminderTitle(event.target.value)} placeholder="事项，例如复诊或检查" /><input type="datetime-local" value={reminderDate} onChange={(event) => setReminderDate(event.target.value)} /><input value={reminderSource} onChange={(event) => setReminderSource(event.target.value)} placeholder="日期来源，例如门诊预约通知" /><button className="secondary" onClick={addReminder} disabled={loading || !reminderTitle || !reminderDate || !reminderSource}>保存事项</button>{reminders.map((reminder) => <article key={reminder.reminder_id} data-complete={reminder.status === "completed"}><div><b>{reminder.title}</b><small>{new Date(reminder.due_at).toLocaleString("zh-CN")} · {reminder.source_note}</small></div>{reminder.status === "pending" && <button onClick={() => completeReminder(reminder)}>标记完成</button>}</article>)}</section>}
             {error && <div className="error-message" role="alert">{error}</div>}
           </div>
         )}

@@ -21,5 +21,8 @@ def test_delete_patient_record(tmp_path) -> None:
     database = Database(tmp_path / "delete.db")
     profile = PatientProfile(patient_id="delete-me", cancer_type=CancerType.RECTAL)
     database.save_patient(profile)
+    database.log_event("patient_saved", "delete-me", {"test": True})
+    assert database.count_audit_events("delete-me") == 1
     assert database.delete_patient("delete-me") is True
     assert database.get_patient("delete-me") is None
+    assert database.count_audit_events("delete-me") == 0

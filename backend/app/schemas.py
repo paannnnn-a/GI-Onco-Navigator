@@ -278,3 +278,23 @@ class FacilityMatchResponse(BaseModel):
     matches: list[FacilityMatch]
     official_registry_url: str
     notice: str
+
+
+class ReminderCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=200)
+    due_at: datetime
+    source_note: str = Field(
+        min_length=2, max_length=500,
+        description="Where the date came from, for example a clinician plan or appointment notice.",
+    )
+
+
+class PatientReminder(ReminderCreate):
+    reminder_id: str
+    patient_id: str
+    status: str
+    created_at: datetime
+
+
+class ReminderStatusUpdate(BaseModel):
+    status: str = Field(pattern=r"^(pending|completed|cancelled)$")
