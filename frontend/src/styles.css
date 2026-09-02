@@ -36,12 +36,24 @@ h1 em { font-style: normal; color: #176b55; }
 .selected-path div { display: grid; gap: 5px; }
 .selected-path span { color: #a9c4ba; font-size: 13px; }
 .selected-path button { border: 0; border-radius: 9px; background: #d9f078; color: #173d32; padding: 13px 18px; display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 700; }
-.profile-panel { margin-top: 18px; padding: 28px; border: 1px solid #dce3de; border-radius: 16px; display: grid; grid-template-columns: 1fr 1fr auto; gap: 18px; align-items: end; }
+.profile-panel { margin-top: 18px; padding: 28px; border: 1px solid #dce3de; border-radius: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: end; }
 .profile-panel label { display: block; margin-bottom: 8px; color: #50655e; font-size: 14px; }
 .profile-panel input { width: 100%; border: 1px solid #cbd6cf; border-radius: 8px; padding: 12px; background: white; }
 .profile-panel button { border: 0; border-radius: 8px; padding: 13px 18px; background: #176b55; color: white; cursor: pointer; }
 .profile-panel button:disabled { opacity: .6; }
-.assessment-result { grid-column: 1 / -1; white-space: pre-wrap; margin: 6px 0 0; padding: 20px; border-radius: 10px; background: #edf5f0; color: #23463b; font: 15px/1.7 inherit; }
+.profile-panel .primary { grid-column: 1 / -1; justify-self: start; }
+.error-message { grid-column: 1 / -1; padding: 14px 16px; border-radius: 8px; background: #fff0ed; color: #8b2d1e; }
+.plan { margin-top: 28px; display: grid; gap: 18px; }
+.status-card { padding: 28px; border-radius: 16px; background: #173d32; color: white; }
+.status-card small { color: #b8cec5; }
+.status-card h3 { margin: 8px 0; font-size: 28px; }
+.status-card p { margin: 0; color: #d6e4de; line-height: 1.7; }
+.missing { padding: 22px 26px; border-radius: 14px; background: #fff8e7; border-left: 4px solid #c68b21; }
+.missing ul, .topic-grid ul { padding-left: 20px; line-height: 1.7; }
+.topic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.topic-grid article { border: 1px solid #dce3de; border-radius: 14px; padding: 22px; }
+.topic-grid article > span { font-weight: 750; font-size: 18px; }
+.topic-grid p { color: #64756f; line-height: 1.6; }
 .evidence-band { background: #12362d; color: white; padding: 78px clamp(24px, 8vw, 128px); }
 .section-heading.light > span { color: #d9f078; }
 .section-heading.light p { color: #a9c4ba; }
@@ -50,13 +62,23 @@ h1 em { font-style: normal; color: #176b55; }
 .evidence-grid svg { color: #d9f078; margin-bottom: 36px; }
 .evidence-grid b { display: block; font-size: 20px; }
 .evidence-grid p { color: #a9c4ba; line-height: 1.6; }
+.question-box { margin-top: 28px; padding: 28px; border: 1px solid #315147; border-radius: 16px; background: #173d32; }
+.question-box label { display: block; margin-bottom: 10px; color: #d6e4de; font-weight: 650; }
+.question-box textarea { width: 100%; min-height: 110px; resize: vertical; border: 1px solid #49685e; border-radius: 10px; padding: 15px; background: #f8faf8; color: #14241f; font: inherit; }
+.question-box button { margin-top: 12px; border: 0; border-radius: 9px; padding: 13px 18px; background: #d9f078; color: #173d32; font-weight: 750; cursor: pointer; }
+.question-box button:disabled { opacity: .55; cursor: not-allowed; }
+.answer { margin-top: 20px; padding: 22px; border-radius: 12px; background: white; color: #243832; }
+.answer h3 { margin-top: 0; }
+.answer p { white-space: pre-wrap; line-height: 1.75; }
+.answer ol { line-height: 1.8; }
+.empty-evidence { padding: 14px; background: #fff8e7; border-radius: 8px; color: #685a3e; }
 .safety { margin: 60px auto; max-width: 1000px; padding: 32px; display: flex; align-items: flex-start; gap: 24px; background: #fff8e7; border-left: 4px solid #c68b21; }
 .safety h2 { margin: 0 0 8px; }
 .safety p { margin: 0; line-height: 1.7; color: #685a3e; }
 @media (max-width: 760px) {
   nav { display: none; }
   .hero { padding-top: 64px; }
-  .cancer-grid, .evidence-grid { grid-template-columns: 1fr; }
+  .cancer-grid, .evidence-grid, .topic-grid { grid-template-columns: 1fr; }
   .selected-path { align-items: stretch; flex-direction: column; gap: 18px; }
   .selected-path button { justify-content: center; }
   .profile-panel { grid-template-columns: 1fr; }
