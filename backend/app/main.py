@@ -1,12 +1,17 @@
+import hashlib
+import logging
 import secrets
+import time
 from datetime import UTC, datetime
+from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend.app.auth import InvalidPatientToken, issue_patient_token, verify_patient_token
 from backend.app.config import get_settings
+from backend.app.observability import Metrics
 from backend.app.schemas import (
     EvidenceReviewRequest,
     EvidenceReviewState,
@@ -25,6 +30,8 @@ from backend.app.storage import Database
 
 settings = get_settings()
 database = Database(settings.sqlite_path)
+metrics = Metrics()
+logger = logging.getLogger("gi_onco.access")
 app = FastAPI(
     title="GI-Onco Navigator API",
     version="0.1.0",
@@ -37,6 +44,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def observe_requests(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))[:128]
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        metrics.record(request.method, request.url.path, 500)
+        logger.exception("request_failed method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
+        raise
+    duration_ms = round((time.perf_counter() - started) * 1000, 1)
+    route = request.scope.get("route")
+    route_path = getattr(route, "path", request.url.path)
+    metrics.record(request.method, route_path, response.status_code)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    logger.info(
+        "request method=%s route=%s status=%s duration_ms=%s request_id=%s",
+        request.method, route_path, response.status_code, duration_ms, request_id,
+    )
+    return response
 
 
 class QuestionRequest(BaseModel):
@@ -74,6 +106,23 @@ def require_patient(patient_id: str, authorization: str = Header(default="")) ->
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/live")
+def liveness() -> dict[str, str]:
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def readiness() -> dict[str, str]:
+    if not database.ping():
+        raise HTTPException(status_code=503, detail="database unavailable")
+    return {"status": "ready"}
+
+
+@app.get("/metrics", response_class=Response)
+def prometheus_metrics() -> Response:
+    return Response(metrics.prometheus(), media_type="text/plain; version=0.0.4")
 
 
 @app.post("/api/v1/patient-access", response_model=PatientAccess, status_code=201)
@@ -205,7 +254,11 @@ def ask_navigation_question(request: QuestionRequest) -> NavigationAnswer:
     database.log_event(
         "navigation_answered",
         request.patient.patient_id,
-        {"question": request.question, "source_ids": [item.source_id for item in citations]},
+        {
+            "question_sha256": hashlib.sha256(request.question.encode("utf-8")).hexdigest(),
+            "question_length": len(request.question),
+            "source_ids": [item.source_id for item in citations],
+        },
     )
     return NavigationAnswer(
         answer=answer,

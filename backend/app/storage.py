@@ -124,6 +124,13 @@ class Database:
                 ),
             )
 
+    def ping(self) -> bool:
+        try:
+            with self.connect() as connection:
+                return connection.execute("SELECT 1").fetchone()[0] == 1
+        except sqlite3.Error:
+            return False
+
     def get_patient(self, patient_id: str) -> PatientProfile | None:
         with self.connect() as connection:
             row = connection.execute(

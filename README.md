@@ -19,6 +19,7 @@ GI-Onco Navigator 将患者结构化档案、术后阶段判断、医学资料�
 - 响应式 React 患者端，可调用后端完成阶段判断
 - 独立管理工作台与四维证据审核门禁（版权、提取质量、医学准确性、患者可读性）
 - Docker、CI、自动测试和可扩展 AI Benchmark
+- 请求追踪、脱敏审计、Prometheus 基础指标以及容器存活/就绪检查
 
 > 默认不连接大模型。患者端保留检索到的原文证据片段，以降低无依据生成风险。模型生成可作为可选层接入，但仍须通过引用和安全校验。
 
@@ -34,6 +35,8 @@ docker compose up --build
 - 证据治理工作台：http://localhost:5173/admin（需 `ADMIN_API_KEY`）
 - API 文档：http://localhost:8000/docs
 - 健康检查：http://localhost:8000/health
+- 就绪检查：http://localhost:8000/health/ready
+- Prometheus 指标：http://localhost:8000/metrics
 
 ### 本地开发
 

@@ -2,19 +2,33 @@ services:
   api:
     build: .
     environment:
+      APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: sqlite:////app/data/gi_onco.db
+      SECRET_KEY: ${SECRET_KEY:-change-me-before-production}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-change-me-before-production}
       ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
     volumes:
       - gi_onco_data:/app/data
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
   web:
     build: ./frontend
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
 
 volumes:
   gi_onco_data:
-
