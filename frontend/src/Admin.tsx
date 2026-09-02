@@ -5,6 +5,7 @@ type Dimension = "copyright" | "extraction_quality" | "medical_accuracy" | "pati
 type Source = { source_id: string; title: string; evidence_type: string; review_status: string; version?: string };
 type Review = { dimension: Dimension; decision: "approved" | "rejected"; reviewer: string; reason: string };
 type ReviewState = { source_id: string; review_status: string; required_dimensions: Dimension[]; latest_reviews: Review[] };
+type ChunkPage = { total: number; items: { chunk_id: string; ordinal: number; text: string; page_start?: number; page_end?: number; timestamp_start_seconds?: number; timestamp_end_seconds?: number; section_path: string[]; extraction_method: string; review_status: string; content_hash: string }[] };
 
 const labels: Record<Dimension, string> = {
   copyright: "版权与授权",
@@ -18,6 +19,7 @@ export function Admin() {
   const [sources, setSources] = useState<Source[]>([]);
   const [selected, setSelected] = useState<Source | null>(null);
   const [state, setState] = useState<ReviewState | null>(null);
+  const [chunks, setChunks] = useState<ChunkPage | null>(null);
   const [reviewer, setReviewer] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
@@ -43,7 +45,13 @@ export function Admin() {
 
   async function openSource(source: Source) {
     setSelected(source); setError("");
-    try { setState(await api<ReviewState>(`/api/v1/admin/evidence/sources/${source.source_id}/reviews`)); }
+    try {
+      const [reviewState, chunkPage] = await Promise.all([
+        api<ReviewState>(`/api/v1/admin/evidence/sources/${source.source_id}/reviews`),
+        api<ChunkPage>(`/api/v1/admin/evidence/sources/${source.source_id}/chunks?limit=20`),
+      ]);
+      setState(reviewState); setChunks(chunkPage);
+    }
     catch (caught) { setError(caught instanceof Error ? caught.message : "无法读取审核状态"); }
   }
 
@@ -92,6 +100,7 @@ export function Admin() {
           <div className="review-title"><div><small>{selected.source_id}</small><h2>{selected.title}</h2></div><strong data-status={state.review_status}>{state.review_status}</strong></div>
           <div className="lifecycle-actions"><span>紧急状态控制</span><button onClick={() => changeLifecycle("quarantined")} disabled={busy}>重新隔离</button><button onClick={() => changeLifecycle("outdated")} disabled={busy}>标记过期</button><button className="reject" onClick={() => changeLifecycle("withdrawn")} disabled={busy}>撤回</button></div>
           <div className="reviewer-fields"><label>审核人<input value={reviewer} onChange={(event) => setReviewer(event.target.value)} placeholder="真实姓名或团队标识" /></label><label>本次审核依据<textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="记录核对范围、发现和决定理由" /></label></div>
+          <section className="chunk-preview"><h3>提取内容抽查 <small>{chunks?.total ?? 0} 个内容块，当前显示前 20 个</small></h3>{chunks?.items.length === 0 && <p>该来源尚无可审核内容块，不能仅凭来源名称完成内容审核。</p>}{chunks?.items.map((chunk) => <details key={chunk.chunk_id}><summary><span>内容块 {chunk.ordinal + 1}</span><small>{chunk.page_start ? `第 ${chunk.page_start}${chunk.page_end && chunk.page_end !== chunk.page_start ? `–${chunk.page_end}` : ""} 页` : chunk.timestamp_start_seconds !== undefined ? `${chunk.timestamp_start_seconds}–${chunk.timestamp_end_seconds ?? "?"} 秒` : chunk.section_path.join(" / ") || "无定位"} · {chunk.extraction_method}</small></summary><p>{chunk.text}</p><code>SHA-256 {chunk.content_hash}</code></details>)}</section>
           <div className="review-gates">{state.required_dimensions.map((dimension) => { const item = latest.get(dimension); return <article key={dimension}><div>{item?.decision === "approved" ? <CheckCircle2 /> : <ShieldAlert />}<span><b>{labels[dimension]}</b><small>{item ? `${item.reviewer}：${item.reason}` : "尚未审核"}</small></span></div><div><button onClick={() => submit(dimension, "approved")} disabled={busy}>通过</button><button className="reject" onClick={() => submit(dimension, "rejected")} disabled={busy}>拒绝</button></div></article>; })}</div>
         </>}
       </section>

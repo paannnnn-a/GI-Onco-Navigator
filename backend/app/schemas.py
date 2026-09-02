@@ -197,6 +197,28 @@ class EvidenceReviewState(BaseModel):
     latest_reviews: list[EvidenceReviewRecord]
 
 
+class EvidenceChunkPreview(BaseModel):
+    chunk_id: str
+    ordinal: int
+    text: str
+    page_start: int | None = None
+    page_end: int | None = None
+    timestamp_start_seconds: int | None = None
+    timestamp_end_seconds: int | None = None
+    section_path: list[str]
+    extraction_method: str
+    review_status: str
+    content_hash: str
+
+
+class EvidenceChunkPage(BaseModel):
+    source_id: str
+    total: int
+    offset: int
+    limit: int
+    items: list[EvidenceChunkPreview]
+
+
 class SourceLifecycleAction(StrEnum):
     QUARANTINE = "quarantined"
     OUTDATED = "outdated"

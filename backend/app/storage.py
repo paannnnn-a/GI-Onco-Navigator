@@ -251,6 +251,22 @@ class Database:
             if "rejected" in decisions.values():
                 status = "rejected"
             elif all(decisions.get(item) == "approved" for item in REQUIRED_REVIEW_DIMENSIONS):
+                source_details = connection.execute(
+                    "SELECT copyright_status FROM sources WHERE source_id = ?", (source_id,)
+                ).fetchone()
+                if source_details["copyright_status"] in {"unknown", "metadata_only"}:
+                    raise ValueError("patient publication requires a resolved copyright status")
+                chunk_quality = connection.execute(
+                    """SELECT COUNT(*) total,
+                      SUM(CASE WHEN page_start IS NULL AND timestamp_start_seconds IS NULL
+                        AND section_path_json = '[]' THEN 1 ELSE 0 END) missing_locator
+                    FROM evidence_chunks WHERE source_id = ?""",
+                    (source_id,),
+                ).fetchone()
+                if chunk_quality["total"] == 0:
+                    raise ValueError("patient publication requires at least one evidence chunk")
+                if chunk_quality["missing_locator"]:
+                    raise ValueError("every patient-facing evidence chunk requires a locator")
                 status = "approved"
             else:
                 status = "review_in_progress"
@@ -331,6 +347,28 @@ class Database:
                 (source_id,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def list_source_chunks(
+        self, source_id: str, offset: int = 0, limit: int = 20
+    ) -> tuple[int, list[dict[str, object]]]:
+        if self.get_source(source_id) is None:
+            raise KeyError(source_id)
+        with self.connect() as connection:
+            total = connection.execute(
+                "SELECT COUNT(*) FROM evidence_chunks WHERE source_id = ?", (source_id,)
+            ).fetchone()[0]
+            rows = connection.execute(
+                """SELECT chunk_id,ordinal,text,page_start,page_end,timestamp_start_seconds,
+                  timestamp_end_seconds,section_path_json,extraction_method,review_status,content_hash
+                FROM evidence_chunks WHERE source_id = ? ORDER BY ordinal LIMIT ? OFFSET ?""",
+                (source_id, limit, offset),
+            ).fetchall()
+        items: list[dict[str, object]] = []
+        for row in rows:
+            item = dict(row)
+            item["section_path"] = json.loads(str(item.pop("section_path_json")))
+            items.append(item)
+        return int(total), items
 
     def get_review_state(self, source_id: str) -> dict[str, object]:
         source = self.get_source(source_id)

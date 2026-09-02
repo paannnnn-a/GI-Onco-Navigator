@@ -13,6 +13,8 @@ from backend.app.auth import InvalidPatientToken, issue_patient_token, verify_pa
 from backend.app.config import get_settings
 from backend.app.observability import Metrics
 from backend.app.schemas import (
+    EvidenceChunkPage,
+    EvidenceChunkPreview,
     EvidenceReviewRequest,
     EvidenceReviewState,
     EvidenceSourceCreate,
@@ -229,6 +231,24 @@ def get_evidence_reviews(source_id: str) -> EvidenceReviewState:
         raise HTTPException(status_code=404, detail="source not found") from exc
 
 
+@app.get(
+    "/api/v1/admin/evidence/sources/{source_id}/chunks",
+    response_model=EvidenceChunkPage,
+    dependencies=[Depends(require_admin)],
+)
+def get_evidence_chunks(source_id: str, offset: int = 0, limit: int = 20) -> EvidenceChunkPage:
+    if offset < 0 or limit < 1 or limit > 100:
+        raise HTTPException(status_code=422, detail="offset must be non-negative and limit 1..100")
+    try:
+        total, items = database.list_source_chunks(source_id, offset, limit)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="source not found") from exc
+    return EvidenceChunkPage(
+        source_id=source_id, total=total, offset=offset, limit=limit,
+        items=[EvidenceChunkPreview.model_validate(item) for item in items],
+    )
+
+
 @app.post(
     "/api/v1/admin/evidence/sources/{source_id}/reviews",
     response_model=EvidenceReviewState,
@@ -245,6 +265,8 @@ def review_evidence_source(source_id: str, review: EvidenceReviewRequest) -> Evi
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="source not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     database.log_event(
         "source_reviewed",
         source_id,

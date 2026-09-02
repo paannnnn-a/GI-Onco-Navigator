@@ -66,6 +66,7 @@ def test_admin_source_registration_requires_key(tmp_path, monkeypatch) -> None:
         "title": "管理员测试来源",
         "evidence_type": "guideline",
         "cancer_types": ["colon"],
+        "copyright_status": "synthetic_test_permission",
     }
     assert client.post("/api/v1/admin/evidence/sources", json=source).status_code == 401
     response = client.post(
@@ -102,6 +103,7 @@ def test_evidence_requires_all_review_gates_before_patient_search(tmp_path, monk
         "title": "待审核患者资料",
         "evidence_type": "patient_education",
         "cancer_types": ["colon"],
+        "copyright_status": "synthetic_test_permission",
     }
     assert client.post("/api/v1/admin/evidence/sources", json=source, headers=headers).status_code == 201
     database.add_chunk(
@@ -113,6 +115,13 @@ def test_evidence_requires_all_review_gates_before_patient_search(tmp_path, monk
             "extraction_method": "test_fixture", "review_status": "quarantined", "content_hash": "review",
         }
     )
+    chunks = client.get(
+        "/api/v1/admin/evidence/sources/review-source/chunks", headers=headers
+    )
+    assert chunks.status_code == 200
+    assert chunks.json()["total"] == 1
+    assert chunks.json()["items"][0]["page_start"] == 2
+    assert "整理检查资料" in chunks.json()["items"][0]["text"]
     assert database.search("复诊", "colon", approved_only=True) == []
     dimensions = ["copyright", "extraction_quality", "medical_accuracy", "patient_readability"]
     for dimension in dimensions:
