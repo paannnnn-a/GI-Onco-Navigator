@@ -1,4 +1,9 @@
-from backend.app.knowledge import ExtractedPage, chunk_pages, looks_corrupted
+from backend.app.knowledge import (
+    ExtractedPage,
+    chunk_pages,
+    extract_docx_paragraphs,
+    looks_corrupted,
+)
 
 
 def test_corrupt_text_detection() -> None:
@@ -17,3 +22,16 @@ def test_chunk_preserves_page_locator() -> None:
     assert chunks[0].page_start == 3
     assert chunks[0].page_end == 4
 
+
+def test_extract_docx_paragraphs(tmp_path) -> None:
+    from docx import Document
+
+    path = tmp_path / "source.docx"
+    document = Document()
+    document.add_paragraph("第一段可用资料")
+    document.add_paragraph("")
+    document.add_paragraph("第二段可用资料")
+    document.save(path)
+    blocks = extract_docx_paragraphs(path)
+    assert [block.page_number for block in blocks] == [1, 3]
+    assert all(block.method == "docx_paragraph" for block in blocks)

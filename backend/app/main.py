@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+import secrets
+
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -7,10 +9,12 @@ from backend.app.schemas import (
     EvidenceSourceCreate,
     JourneyAssessment,
     NavigationAnswer,
+    PatientNavigationPlan,
     PatientProfile,
 )
 from backend.app.services.citation_guard import CitationValidationError, validate_citations
 from backend.app.services.journey import assess_journey
+from backend.app.services.navigation import build_navigation_plan
 from backend.app.services.retrieval import citation_from_row, retrieve
 from backend.app.services.safety import classify_question
 from backend.app.storage import Database
@@ -42,6 +46,11 @@ class QuestionResponse(BaseModel):
     assessment: JourneyAssessment
 
 
+def require_admin(x_admin_key: str = Header(default="")) -> None:
+    if not settings.admin_api_key or not secrets.compare_digest(x_admin_key, settings.admin_api_key):
+        raise HTTPException(status_code=401, detail="valid admin key required")
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -69,7 +78,7 @@ def list_evidence_sources() -> list[dict[str, object]]:
     return database.list_sources()
 
 
-@app.post("/api/v1/admin/evidence/sources", status_code=201)
+@app.post("/api/v1/admin/evidence/sources", status_code=201, dependencies=[Depends(require_admin)])
 def create_evidence_source(source: EvidenceSourceCreate) -> dict[str, str]:
     database.add_source(source.model_dump(mode="json"))
     database.log_event("source_registered", source.source_id, {"title": source.title})
@@ -79,6 +88,11 @@ def create_evidence_source(source: EvidenceSourceCreate) -> dict[str, str]:
 @app.post("/api/v1/journey/assess", response_model=JourneyAssessment)
 def assess_patient_journey(patient: PatientProfile) -> JourneyAssessment:
     return assess_journey(patient)
+
+
+@app.post("/api/v1/navigation/plan", response_model=PatientNavigationPlan)
+def create_navigation_plan(patient: PatientProfile) -> PatientNavigationPlan:
+    return build_navigation_plan(patient)
 
 
 @app.post("/api/v1/navigation/question", response_model=NavigationAnswer)

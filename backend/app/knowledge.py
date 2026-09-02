@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from docx import Document
 from pypdf import PdfReader
 
 
@@ -101,3 +102,13 @@ def chunk_pages(pages: Iterable[ExtractedPage], target_chars: int = 1200) -> lis
     flush()
     return chunks
 
+
+def extract_docx_paragraphs(docx_path: str | Path) -> list[ExtractedPage]:
+    """Represent DOCX paragraphs as locatable blocks using paragraph ordinals."""
+    document = Document(Path(docx_path))
+    pages: list[ExtractedPage] = []
+    for index, paragraph in enumerate(document.paragraphs, start=1):
+        text = normalize_text(paragraph.text)
+        if text:
+            pages.append(ExtractedPage(index, text, "docx_paragraph", False))
+    return pages

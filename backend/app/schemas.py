@@ -100,6 +100,20 @@ class NavigationAnswer(BaseModel):
     requires_clinician_review: bool = True
 
 
+class NavigationTopic(BaseModel):
+    category: str
+    title: str
+    purpose: str
+    suggested_questions: list[str]
+    evidence_required: bool = True
+
+
+class PatientNavigationPlan(BaseModel):
+    assessment: JourneyAssessment
+    topics: list[NavigationTopic]
+    safety_notice: str
+
+
 class EvidenceSourceCreate(BaseModel):
     source_id: str = Field(min_length=1, max_length=128)
     title: str = Field(min_length=1, max_length=500)

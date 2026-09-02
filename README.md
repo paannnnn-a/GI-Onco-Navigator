@@ -14,6 +14,8 @@ GI-Onco Navigator 将患者结构化档案、术后阶段判断、医学资料�
 - SQLite FTS5 检索、癌种过滤、证据等级排序与页码引用
 - 仅使用 `approved` 片段的患者端抽取式回答
 - 患者档案、资料注册、问答操作的审计记录
+- 管理接口密钥鉴权与患者导航讨论清单
+- PDF 与 DOCX 资料导入；未审核资料默认隔离
 - 响应式 React 患者端，可调用后端完成阶段判断
 - Docker、CI、自动测试和可扩展 AI Benchmark
 
@@ -47,6 +49,7 @@ python -m venv .venv
 
 ```bash
 gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf
+gi-onco ingest-docx data/sources/example.json /path/to/source.docx
 ```
 
 如果输出中的 `pages_needing_ocr` 非空，该来源不会因“导入成功”自动变为患者端可用；需完成 OCR、逐页质量检查和医学审核，再将切片状态改为 `approved`。
