@@ -29,6 +29,22 @@ class Chunk:
     extraction_method: str
 
 
+@dataclass(frozen=True)
+class TranscriptCue:
+    start_seconds: int
+    end_seconds: int
+    text: str
+
+
+@dataclass(frozen=True)
+class TranscriptChunk:
+    ordinal: int
+    text: str
+    start_seconds: int
+    end_seconds: int
+    content_hash: str
+
+
 class OcrEngine(Protocol):
     def recognize_pdf_page(self, pdf_path: Path, page_number: int) -> str: ...
 
@@ -112,3 +128,59 @@ def extract_docx_paragraphs(docx_path: str | Path) -> list[ExtractedPage]:
         if text:
             pages.append(ExtractedPage(index, text, "docx_paragraph", False))
     return pages
+
+
+def _timestamp_seconds(value: str) -> int:
+    parts = value.strip().replace(",", ".").split(":")
+    if len(parts) == 2:
+        hours, minutes, seconds = 0, int(parts[0]), float(parts[1])
+    elif len(parts) == 3:
+        hours, minutes, seconds = int(parts[0]), int(parts[1]), float(parts[2])
+    else:
+        raise ValueError(f"invalid subtitle timestamp: {value}")
+    return round(hours * 3600 + minutes * 60 + seconds)
+
+
+def extract_transcript_cues(path: str | Path) -> list[TranscriptCue]:
+    """Parse SRT or WebVTT; subtitle content is data, never application instructions."""
+    raw = Path(path).read_text(encoding="utf-8-sig")
+    blocks = re.split(r"\r?\n\s*\r?\n", raw.strip())
+    cues: list[TranscriptCue] = []
+    for block in blocks:
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines or lines[0].upper().startswith("WEBVTT"):
+            continue
+        timing_index = next((index for index, line in enumerate(lines) if "-->" in line), None)
+        if timing_index is None:
+            continue
+        start_raw, end_raw = (item.strip().split()[0] for item in lines[timing_index].split("-->", 1))
+        text = normalize_text(" ".join(re.sub(r"<[^>]+>", "", line) for line in lines[timing_index + 1 :]))
+        if text:
+            cues.append(TranscriptCue(_timestamp_seconds(start_raw), _timestamp_seconds(end_raw), text))
+    return cues
+
+
+def chunk_transcript(cues: Iterable[TranscriptCue], target_chars: int = 800) -> list[TranscriptChunk]:
+    chunks: list[TranscriptChunk] = []
+    buffer: list[TranscriptCue] = []
+
+    def flush() -> None:
+        nonlocal buffer
+        if not buffer:
+            return
+        text = normalize_text(" ".join(item.text for item in buffer))
+        chunks.append(
+            TranscriptChunk(
+                ordinal=len(chunks), text=text, start_seconds=buffer[0].start_seconds,
+                end_seconds=buffer[-1].end_seconds,
+                content_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            )
+        )
+        buffer = []
+
+    for cue in cues:
+        if buffer and sum(len(item.text) for item in buffer) + len(cue.text) > target_chars:
+            flush()
+        buffer.append(cue)
+    flush()
+    return chunks

@@ -6,7 +6,13 @@ import json
 from pathlib import Path
 
 from backend.app.config import get_settings
-from backend.app.knowledge import chunk_pages, extract_docx_paragraphs, extract_pdf_pages
+from backend.app.knowledge import (
+    chunk_pages,
+    chunk_transcript,
+    extract_docx_paragraphs,
+    extract_pdf_pages,
+    extract_transcript_cues,
+)
 from backend.app.ocr import RapidOcrEngine
 from backend.app.storage import Database
 
@@ -80,6 +86,32 @@ def ingest_docx(manifest_path: Path, docx_path: Path) -> dict[str, object]:
     return result
 
 
+def ingest_transcript(manifest_path: Path, transcript_path: Path) -> dict[str, object]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    database = Database(get_settings().sqlite_path)
+    manifest["local_filename"] = transcript_path.name
+    manifest["sha256"] = hashlib.sha256(transcript_path.read_bytes()).hexdigest()
+    database.add_source(manifest)
+    cues = extract_transcript_cues(transcript_path)
+    chunks = chunk_transcript(cues)
+    for chunk in chunks:
+        database.add_chunk(
+            {
+                "chunk_id": f"{manifest['source_id']}:{chunk.ordinal:05d}",
+                "source_id": manifest["source_id"], "ordinal": chunk.ordinal, "text": chunk.text,
+                "page_start": None, "page_end": None,
+                "timestamp_start_seconds": chunk.start_seconds,
+                "timestamp_end_seconds": chunk.end_seconds,
+                "section_path": [], "cancer_types": manifest.get("cancer_types", []),
+                "tags": manifest.get("tags", []), "extraction_method": "verified_subtitle",
+                "review_status": "quarantined", "content_hash": chunk.content_hash,
+            }
+        )
+    result = {"source_id": manifest["source_id"], "cues": len(cues), "chunks": len(chunks)}
+    database.log_event("transcript_ingested", manifest["source_id"], result)
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="gi-onco")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -90,6 +122,9 @@ def main() -> None:
     ingest_docx_parser = subparsers.add_parser("ingest-docx")
     ingest_docx_parser.add_argument("manifest", type=Path)
     ingest_docx_parser.add_argument("docx", type=Path)
+    ingest_transcript_parser = subparsers.add_parser("ingest-transcript")
+    ingest_transcript_parser.add_argument("manifest", type=Path)
+    ingest_transcript_parser.add_argument("transcript", type=Path, help="UTF-8 SRT or WebVTT file")
     args = parser.parse_args()
     if args.command == "ingest-pdf":
         print(
@@ -101,6 +136,12 @@ def main() -> None:
         )
     elif args.command == "ingest-docx":
         print(json.dumps(ingest_docx(args.manifest, args.docx), ensure_ascii=False, indent=2))
+    elif args.command == "ingest-transcript":
+        print(
+            json.dumps(
+                ingest_transcript(args.manifest, args.transcript), ensure_ascii=False, indent=2
+            )
+        )
 
 
 if __name__ == "__main__":
