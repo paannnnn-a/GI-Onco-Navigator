@@ -27,6 +27,10 @@
 .review-title { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #e1e8e4; padding-bottom: 1rem; }
 .review-title h2 { margin: .25rem 0 0; }
 .reviewer-fields { display: grid; grid-template-columns: .65fr 1.35fr; gap: 1rem; margin: 1.2rem 0; }
+.lifecycle-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; padding: .8rem 0; border-bottom: 1px solid #e1e8e4; }
+.lifecycle-actions span { margin-right: auto; font-size: .82rem; font-weight: 700; color: #6b7d76; }
+.lifecycle-actions button { border: 1px solid #bfd0c8; border-radius: 8px; padding: .55rem .75rem; background: white; color: #23483b; font-weight: 700; cursor: pointer; }
+.lifecycle-actions .reject { color: #922d2d; border-color: #e4baba; }
 .reviewer-fields textarea { min-height: 80px; resize: vertical; }
 .review-gates { display: grid; gap: .7rem; }
 .review-gates article { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem; border: 1px solid #dde6e1; border-radius: 12px; }

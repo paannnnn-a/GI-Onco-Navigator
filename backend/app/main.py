@@ -23,6 +23,8 @@ from backend.app.schemas import (
     NavigationAnswer,
     PatientNavigationPlan,
     PatientProfile,
+    SourceLifecycleRecord,
+    SourceLifecycleRequest,
 )
 from backend.app.services.citation_guard import CitationValidationError, validate_citations
 from backend.app.services.facilities import match_facilities
@@ -238,6 +240,36 @@ def review_evidence_source(source_id: str, review: EvidenceReviewRequest) -> Evi
         {"dimension": review.dimension.value, "decision": review.decision.value, "reviewer": review.reviewer},
     )
     return EvidenceReviewState.model_validate(state)
+
+
+@app.post(
+    "/api/v1/admin/evidence/sources/{source_id}/lifecycle",
+    dependencies=[Depends(require_admin)],
+)
+def change_source_lifecycle(source_id: str, action: SourceLifecycleRequest) -> dict[str, object]:
+    try:
+        result = database.transition_source_status(
+            source_id, action.status.value, action.actor, action.reason
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="source not found") from exc
+    database.log_event("source_status_changed", source_id, result)
+    return result
+
+
+@app.get(
+    "/api/v1/admin/evidence/sources/{source_id}/lifecycle",
+    response_model=list[SourceLifecycleRecord],
+    dependencies=[Depends(require_admin)],
+)
+def get_source_lifecycle(source_id: str) -> list[SourceLifecycleRecord]:
+    try:
+        return [
+            SourceLifecycleRecord.model_validate(item)
+            for item in database.list_source_status_events(source_id)
+        ]
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="source not found") from exc
 
 
 @app.post("/api/v1/journey/assess", response_model=JourneyAssessment)

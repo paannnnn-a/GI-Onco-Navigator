@@ -111,6 +111,31 @@ def test_evidence_requires_all_review_gates_before_patient_search(tmp_path, monk
         assert response.status_code == 200
     assert response.json()["review_status"] == "approved"
     assert len(database.search("复诊", "colon", approved_only=True)) == 1
+    response = client.post(
+        "/api/v1/admin/evidence/sources/review-source/lifecycle",
+        json={"status": "withdrawn", "actor": "Reviewer A", "reason": "发现内容需要重新核验。"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert database.search("复诊", "colon", approved_only=True) == []
+    events = client.get(
+        "/api/v1/admin/evidence/sources/review-source/lifecycle", headers=headers
+    ).json()
+    assert events[0]["new_status"] == "withdrawn"
+    state = client.get(
+        "/api/v1/admin/evidence/sources/review-source/reviews", headers=headers
+    ).json()
+    assert state["latest_reviews"] == []
+    state = client.post(
+        "/api/v1/admin/evidence/sources/review-source/reviews",
+        json={
+            "dimension": "copyright", "decision": "approved", "reviewer": "Reviewer A",
+            "reason": "撤回后的新一轮版权复核已完成。",
+        },
+        headers=headers,
+    ).json()
+    assert state["review_status"] == "review_in_progress"
+    assert database.search("复诊", "colon", approved_only=True) == []
 
 
 def test_rejection_keeps_source_out_of_patient_search(tmp_path, monkeypatch) -> None:

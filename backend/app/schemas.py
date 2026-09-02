@@ -169,6 +169,28 @@ class EvidenceReviewState(BaseModel):
     latest_reviews: list[EvidenceReviewRecord]
 
 
+class SourceLifecycleAction(StrEnum):
+    QUARANTINE = "quarantined"
+    OUTDATED = "outdated"
+    WITHDRAWN = "withdrawn"
+
+
+class SourceLifecycleRequest(BaseModel):
+    status: SourceLifecycleAction
+    actor: str = Field(min_length=2, max_length=128)
+    reason: str = Field(min_length=5, max_length=2000)
+
+
+class SourceLifecycleRecord(BaseModel):
+    event_id: int
+    source_id: str
+    previous_status: str
+    new_status: str
+    actor: str
+    reason: str
+    created_at: datetime
+
+
 class FacilityCreate(BaseModel):
     facility_id: str = Field(min_length=1, max_length=128)
     name: str = Field(min_length=2, max_length=300)

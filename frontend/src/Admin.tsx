@@ -63,6 +63,22 @@ export function Admin() {
     finally { setBusy(false); }
   }
 
+  async function changeLifecycle(status: "quarantined" | "outdated" | "withdrawn") {
+    if (!selected || reviewer.trim().length < 2 || reason.trim().length < 5) {
+      setError("下线或隔离资料前，请填写操作人和具体理由。"); return;
+    }
+    setBusy(true); setError("");
+    try {
+      await api(`/api/v1/admin/evidence/sources/${selected.source_id}/lifecycle`, {
+        method: "POST", body: JSON.stringify({ status, actor: reviewer, reason }),
+      });
+      setState((current) => current ? { ...current, review_status: status } : current);
+      setSources((items) => items.map((item) => item.source_id === selected.source_id ? { ...item, review_status: status } : item));
+      setReason("");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "状态变更失败"); }
+    finally { setBusy(false); }
+  }
+
   const latest = new Map(state?.latest_reviews.map((item) => [item.dimension, item]));
 
   return <main className="admin-shell">
@@ -74,6 +90,7 @@ export function Admin() {
       <section className="review-panel">
         {!selected || !state ? <div className="admin-empty"><ClipboardCheck size={40} /><p>选择一个来源，查看并记录审核。</p></div> : <>
           <div className="review-title"><div><small>{selected.source_id}</small><h2>{selected.title}</h2></div><strong data-status={state.review_status}>{state.review_status}</strong></div>
+          <div className="lifecycle-actions"><span>紧急状态控制</span><button onClick={() => changeLifecycle("quarantined")} disabled={busy}>重新隔离</button><button onClick={() => changeLifecycle("outdated")} disabled={busy}>标记过期</button><button className="reject" onClick={() => changeLifecycle("withdrawn")} disabled={busy}>撤回</button></div>
           <div className="reviewer-fields"><label>审核人<input value={reviewer} onChange={(event) => setReviewer(event.target.value)} placeholder="真实姓名或团队标识" /></label><label>本次审核依据<textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="记录核对范围、发现和决定理由" /></label></div>
           <div className="review-gates">{state.required_dimensions.map((dimension) => { const item = latest.get(dimension); return <article key={dimension}><div>{item?.decision === "approved" ? <CheckCircle2 /> : <ShieldAlert />}<span><b>{labels[dimension]}</b><small>{item ? `${item.reviewer}：${item.reason}` : "尚未审核"}</small></span></div><div><button onClick={() => submit(dimension, "approved")} disabled={busy}>通过</button><button className="reject" onClick={() => submit(dimension, "rejected")} disabled={busy}>拒绝</button></div></article>; })}</div>
         </>}

@@ -72,9 +72,21 @@ CREATE TABLE IF NOT EXISTS source_reviews (
   decision TEXT NOT NULL,
   reviewer TEXT NOT NULL,
   reason TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_source_reviews_source ON source_reviews(source_id, review_id);
+CREATE TABLE IF NOT EXISTS source_status_events (
+  event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_id TEXT NOT NULL REFERENCES sources(source_id) ON DELETE CASCADE,
+  previous_status TEXT NOT NULL,
+  new_status TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_source_status_events_source
+  ON source_status_events(source_id, event_id);
 CREATE TABLE IF NOT EXISTS facilities (
   facility_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -112,6 +124,13 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+            columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(source_reviews)").fetchall()
+            }
+            if "active" not in columns:
+                connection.execute(
+                    "ALTER TABLE source_reviews ADD COLUMN active INTEGER NOT NULL DEFAULT 1"
+                )
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -219,7 +238,7 @@ class Database:
                 """SELECT r.dimension, r.decision FROM source_reviews r
                 JOIN (
                   SELECT dimension, MAX(review_id) review_id FROM source_reviews
-                  WHERE source_id = ? GROUP BY dimension
+                  WHERE source_id = ? AND active = 1 GROUP BY dimension
                 ) current ON current.review_id = r.review_id""",
                 (source_id,),
             ).fetchall()
@@ -234,7 +253,79 @@ class Database:
             connection.execute(
                 "UPDATE evidence_chunks SET review_status = ? WHERE source_id = ?", (status, source_id)
             )
+            if status == "approved":
+                superseded = connection.execute(
+                    "SELECT supersedes_source_id FROM sources WHERE source_id = ?", (source_id,)
+                ).fetchone()["supersedes_source_id"]
+                if superseded and superseded != source_id:
+                    old = connection.execute(
+                        "SELECT review_status FROM sources WHERE source_id = ?", (superseded,)
+                    ).fetchone()
+                    if old and old["review_status"] == "approved":
+                        connection.execute(
+                            "UPDATE sources SET review_status = 'outdated' WHERE source_id = ?",
+                            (superseded,),
+                        )
+                        connection.execute(
+                            "UPDATE evidence_chunks SET review_status = 'outdated' WHERE source_id = ?",
+                            (superseded,),
+                        )
+                        connection.execute(
+                            "UPDATE source_reviews SET active = 0 WHERE source_id = ?", (superseded,)
+                        )
+                        connection.execute(
+                            """INSERT INTO source_status_events(
+                              source_id,previous_status,new_status,actor,reason
+                            ) VALUES (?,?,?,?,?)""",
+                            (
+                                superseded, "approved", "outdated", reviewer,
+                                f"被已审核来源 {source_id} 明确替代。",
+                            ),
+                        )
         return self.get_review_state(source_id)
+
+    def transition_source_status(
+        self, source_id: str, new_status: str, actor: str, reason: str
+    ) -> dict[str, object]:
+        if new_status not in {"quarantined", "outdated", "withdrawn"}:
+            raise ValueError("unsupported lifecycle status")
+        with self.connect() as connection:
+            source = connection.execute(
+                "SELECT review_status FROM sources WHERE source_id = ?", (source_id,)
+            ).fetchone()
+            if source is None:
+                raise KeyError(source_id)
+            previous = str(source["review_status"])
+            connection.execute(
+                "UPDATE sources SET review_status = ? WHERE source_id = ?", (new_status, source_id)
+            )
+            connection.execute(
+                "UPDATE evidence_chunks SET review_status = ? WHERE source_id = ?",
+                (new_status, source_id),
+            )
+            connection.execute(
+                "UPDATE source_reviews SET active = 0 WHERE source_id = ?", (source_id,)
+            )
+            connection.execute(
+                """INSERT INTO source_status_events(
+                  source_id,previous_status,new_status,actor,reason
+                ) VALUES (?,?,?,?,?)""",
+                (source_id, previous, new_status, actor, reason),
+            )
+        return {
+            "source_id": source_id, "previous_status": previous, "new_status": new_status,
+            "actor": actor, "reason": reason,
+        }
+
+    def list_source_status_events(self, source_id: str) -> list[dict[str, object]]:
+        if self.get_source(source_id) is None:
+            raise KeyError(source_id)
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM source_status_events WHERE source_id = ? ORDER BY event_id DESC",
+                (source_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def get_review_state(self, source_id: str) -> dict[str, object]:
         source = self.get_source(source_id)
@@ -244,7 +335,7 @@ class Database:
             rows = connection.execute(
                 """SELECT r.* FROM source_reviews r JOIN (
                   SELECT dimension, MAX(review_id) review_id FROM source_reviews
-                  WHERE source_id = ? GROUP BY dimension
+                  WHERE source_id = ? AND active = 1 GROUP BY dimension
                 ) current ON current.review_id = r.review_id ORDER BY r.dimension""",
                 (source_id,),
             ).fetchall()
