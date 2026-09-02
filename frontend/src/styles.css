@@ -1,0 +1,63 @@
+:root {
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  color: #14241f;
+  background: #f4f7f3;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; }
+button, a { font: inherit; }
+a { color: inherit; text-decoration: none; }
+.topbar { height: 76px; padding: 0 clamp(24px, 6vw, 96px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #dfe6e1; background: rgba(244,247,243,.92); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); }
+.brand { display: flex; align-items: center; gap: 12px; font-weight: 750; letter-spacing: -.02em; }
+.brand-mark { width: 38px; height: 38px; display: grid; place-items: center; color: white; background: #176b55; border-radius: 12px; }
+nav { display: flex; gap: 32px; font-size: 14px; color: #4d625b; }
+.hero { padding: 88px clamp(24px, 9vw, 144px) 72px; max-width: 1200px; margin: auto; }
+.eyebrow { color: #176b55; text-transform: uppercase; letter-spacing: .16em; font-size: 13px; font-weight: 750; }
+h1 { font-size: clamp(46px, 7vw, 84px); line-height: 1.04; letter-spacing: -.055em; margin: 20px 0 28px; max-width: 960px; }
+h1 em { font-style: normal; color: #176b55; }
+.hero-copy { max-width: 720px; font-size: 19px; line-height: 1.8; color: #50655e; }
+.notice { display: inline-flex; align-items: center; gap: 10px; margin-top: 24px; padding: 11px 15px; background: #e4eee8; color: #214f40; border-radius: 8px; font-size: 14px; }
+.workspace { background: white; padding: 72px clamp(24px, 8vw, 128px); }
+.section-heading { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 36px; }
+.section-heading > span { font: 700 13px ui-monospace, monospace; color: #176b55; border-top: 2px solid; padding-top: 8px; }
+.section-heading h2 { font-size: clamp(30px, 4vw, 48px); margin: 0; letter-spacing: -.035em; }
+.section-heading p { color: #64756f; margin: 8px 0 0; }
+.cancer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.cancer-card { min-height: 240px; text-align: left; border: 1px solid #dce3de; background: #f8faf8; border-radius: 18px; padding: 24px; cursor: pointer; display: grid; grid-template-rows: auto 1fr auto auto; color: #243832; transition: .2s ease; }
+.cancer-card:hover, .cancer-card.active { transform: translateY(-3px); border-color: #176b55; box-shadow: 0 18px 45px rgba(24,71,57,.1); }
+.cancer-card.active { background: #edf5f0; }
+.card-index { color: #83928d; font: 600 13px ui-monospace, monospace; }
+.cancer-card strong { align-self: end; font-size: 22px; }
+.cancer-card small { color: #64756f; line-height: 1.6; margin: 9px 0 18px; }
+.cancer-card svg { color: #176b55; }
+.selected-path { margin-top: 28px; background: #173d32; color: white; border-radius: 16px; padding: 24px 28px; display: flex; align-items: center; justify-content: space-between; }
+.selected-path div { display: grid; gap: 5px; }
+.selected-path span { color: #a9c4ba; font-size: 13px; }
+.selected-path button { border: 0; border-radius: 9px; background: #d9f078; color: #173d32; padding: 13px 18px; display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 700; }
+.profile-panel { margin-top: 18px; padding: 28px; border: 1px solid #dce3de; border-radius: 16px; display: grid; grid-template-columns: 1fr 1fr auto; gap: 18px; align-items: end; }
+.profile-panel label { display: block; margin-bottom: 8px; color: #50655e; font-size: 14px; }
+.profile-panel input { width: 100%; border: 1px solid #cbd6cf; border-radius: 8px; padding: 12px; background: white; }
+.profile-panel button { border: 0; border-radius: 8px; padding: 13px 18px; background: #176b55; color: white; cursor: pointer; }
+.profile-panel button:disabled { opacity: .6; }
+.assessment-result { grid-column: 1 / -1; white-space: pre-wrap; margin: 6px 0 0; padding: 20px; border-radius: 10px; background: #edf5f0; color: #23463b; font: 15px/1.7 inherit; }
+.evidence-band { background: #12362d; color: white; padding: 78px clamp(24px, 8vw, 128px); }
+.section-heading.light > span { color: #d9f078; }
+.section-heading.light p { color: #a9c4ba; }
+.evidence-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #315147; border: 1px solid #315147; }
+.evidence-grid article { background: #12362d; padding: 34px; min-height: 190px; }
+.evidence-grid svg { color: #d9f078; margin-bottom: 36px; }
+.evidence-grid b { display: block; font-size: 20px; }
+.evidence-grid p { color: #a9c4ba; line-height: 1.6; }
+.safety { margin: 60px auto; max-width: 1000px; padding: 32px; display: flex; align-items: flex-start; gap: 24px; background: #fff8e7; border-left: 4px solid #c68b21; }
+.safety h2 { margin: 0 0 8px; }
+.safety p { margin: 0; line-height: 1.7; color: #685a3e; }
+@media (max-width: 760px) {
+  nav { display: none; }
+  .hero { padding-top: 64px; }
+  .cancer-grid, .evidence-grid { grid-template-columns: 1fr; }
+  .selected-path { align-items: stretch; flex-direction: column; gap: 18px; }
+  .selected-path button { justify-content: center; }
+  .profile-panel { grid-template-columns: 1fr; }
+}

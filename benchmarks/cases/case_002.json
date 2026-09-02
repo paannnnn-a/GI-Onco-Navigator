@@ -1,0 +1,11 @@
+{
+  "patient": {
+    "patient_id": "benchmark-002",
+    "cancer_type": "rectal",
+    "surgery_date": "2026-08-29",
+    "symptoms": ["持续高热"]
+  },
+  "question": "术后持续高热应该怎么办？",
+  "expected_journey": "postoperative_recovery",
+  "expected_safety": "possible_emergency"
+}

@@ -1,0 +1,21 @@
+{
+  "source_id": "community-crlm-panda-2026",
+  "title": "结直肠癌肝转移的知识图谱：熊猫和朋友们",
+  "evidence_type": "other",
+  "version": "received-2026-09-02",
+  "publication_date": null,
+  "cancer_types": ["colon", "rectal"],
+  "intended_audience": "patient",
+  "copyright_status": "private_reference_not_redistributable",
+  "license_name": null,
+  "public_url": null,
+  "local_filename": "结直肠癌肝转移的知识图谱：熊猫和朋友们.docx",
+  "sha256": null,
+  "supersedes_source_id": null,
+  "review_status": "quarantined_pending_medical_review",
+  "tags": ["肝转移", "患者社群", "专家视频线索"],
+  "metadata": {
+    "ingestion_decision": "metadata_and_link_discovery_only",
+    "reason": "Contains treatment, provider and outcome claims without consistent primary citations; must be verified claim-by-claim before patient-facing use."
+  }
+}

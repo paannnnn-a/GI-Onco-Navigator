@@ -1,0 +1,20 @@
+services:
+  api:
+    build: .
+    environment:
+      DATABASE_URL: sqlite:////app/data/gi_onco.db
+      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
+    volumes:
+      - gi_onco_data:/app/data
+    ports:
+      - "8000:8000"
+  web:
+    build: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  gi_onco_data:
+
