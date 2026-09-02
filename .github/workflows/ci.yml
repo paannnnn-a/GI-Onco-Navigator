@@ -18,6 +18,7 @@ jobs:
       - run: pip install -e '.[dev]'
       - run: ruff check backend
       - run: python -m pytest --cov=backend.app --cov-report=term-missing -ra
+      - run: python -c "import backend.app; import backend.app.cli; import backend.app.benchmark"
       - run: gi-onco-benchmark benchmarks/cases
   frontend:
     runs-on: ubuntu-latest

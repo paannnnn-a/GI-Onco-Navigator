@@ -37,7 +37,7 @@ gi-onco = "backend.app.cli:main"
 gi-onco-benchmark = "backend.app.benchmark:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["backend/app"]
+packages = ["backend"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
