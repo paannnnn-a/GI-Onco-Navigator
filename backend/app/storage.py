@@ -303,6 +303,24 @@ class Database:
             rows = connection.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
+    def approved_candidates(
+        self, cancer_type: str | None = None, limit: int = 500
+    ) -> list[dict[str, object]]:
+        filters = ["c.review_status = 'approved'", "s.review_status = 'approved'"]
+        params: list[object] = []
+        if cancer_type:
+            filters.append("c.cancer_types_json LIKE ?")
+            params.append(f'%"{cancer_type}"%')
+        params.append(limit)
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""SELECT c.*, s.title, s.evidence_type, s.version, s.public_url
+                FROM evidence_chunks c JOIN sources s ON s.source_id = c.source_id
+                WHERE {' AND '.join(filters)} ORDER BY c.chunk_id LIMIT ?""",
+                params,
+            ).fetchall()
+        return [dict(row) for row in rows]
+
 
 def evidence_type_priority(value: str) -> int:
     order = {
