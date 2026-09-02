@@ -1,0 +1,18 @@
+{
+  "source_id": "csco-colorectal-2026",
+  "title": "2026 CSCO 结直肠癌诊疗指南",
+  "evidence_type": "guideline",
+  "version": "2026",
+  "publication_date": null,
+  "cancer_types": ["colon", "rectal"],
+  "intended_audience": "clinician",
+  "copyright_status": "copyright_restricted_local_only",
+  "license_name": null,
+  "public_url": null,
+  "local_filename": "2026CSCO结直肠癌诊疗指南.pdf",
+  "sha256": "2735757fb8854e94b3db920812dd44e42d6c7bb12c884858a5f43d6ce9d3c517",
+  "supersedes_source_id": "csco-colorectal-2025",
+  "review_status": "quarantined_pending_ocr",
+  "tags": ["CSCO", "结直肠癌", "临床指南"],
+  "metadata": {"pages": 174, "redistribute_original": false}
+}

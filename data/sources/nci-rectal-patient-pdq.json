@@ -1,0 +1,18 @@
+{
+  "source_id": "nci-rectal-patient-pdq",
+  "title": "Rectal Cancer Treatment (PDQ) - Patient Version",
+  "evidence_type": "patient_education",
+  "version": "living-web-source",
+  "publication_date": null,
+  "cancer_types": ["rectal"],
+  "intended_audience": "patient",
+  "copyright_status": "nci-reuse_policy_applies",
+  "license_name": null,
+  "public_url": "https://www.cancer.gov/types/colorectal/patient/rectal-treatment-pdq",
+  "local_filename": null,
+  "sha256": null,
+  "supersedes_source_id": null,
+  "review_status": "unreviewed_translation_required",
+  "tags": ["NCI", "PDQ", "直肠癌", "患者教育"],
+  "metadata": {"language": "en", "check_for_updates_days": 30}
+}

@@ -85,7 +85,7 @@ docs/          产品范围、数据库设计与证据治理规范
 .github/       持续集成
 ```
 
-详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md) 和 [证据治理](docs/evidence_governance.md)。
+详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md)、[证据治理](docs/evidence_governance.md)、[用户资料审查](docs/material_review.md) 和 [外部权威来源](docs/external_sources.md)。
 
 ## 医疗安全与隐私
 

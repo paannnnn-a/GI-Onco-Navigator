@@ -1,0 +1,18 @@
+{
+  "source_id": "colorectal-treatment-primer",
+  "title": "结直肠癌治疗入门",
+  "evidence_type": "patient_education",
+  "version": null,
+  "publication_date": null,
+  "cancer_types": ["colon", "rectal"],
+  "intended_audience": "patient",
+  "copyright_status": "copyright_unknown_local_only",
+  "license_name": null,
+  "public_url": null,
+  "local_filename": "结直肠癌治疗入门.pdf",
+  "sha256": "698143081627389fe50844ec430eeb8a33dd670320afc33ebcc0f2e7300370a3",
+  "supersedes_source_id": null,
+  "review_status": "quarantined_extraction_quality",
+  "tags": ["结直肠癌", "患者教育"],
+  "metadata": {"pages": 132, "redistribute_original": false}
+}

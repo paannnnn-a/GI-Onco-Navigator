@@ -27,6 +27,10 @@ dev = [
   "pytest-cov>=6.2,<8",
   "ruff>=0.12,<1",
 ]
+ocr = [
+  "pymupdf>=1.26,<2",
+  "rapidocr-onnxruntime>=1.4,<2",
+]
 
 [project.scripts]
 gi-onco = "backend.app.cli:main"

@@ -1,0 +1,18 @@
+{
+  "source_id": "gastric-101-2026-v1",
+  "title": "胃癌101患者手册",
+  "evidence_type": "patient_education",
+  "version": "2026 v1",
+  "publication_date": "2026-03-20",
+  "cancer_types": ["gastric"],
+  "intended_audience": "patient",
+  "copyright_status": "copyright_unknown_local_only",
+  "license_name": null,
+  "public_url": null,
+  "local_filename": "胃癌101患者手册_2026v1.pdf",
+  "sha256": "3f0cfd8b8ef7a9f9881ec905b1b7f81f4c0c7c98bd8dbc05cb379c653b450688",
+  "supersedes_source_id": null,
+  "review_status": "quarantined_pending_ocr",
+  "tags": ["胃癌", "患者教育"],
+  "metadata": {"pages": 54, "redistribute_original": false}
+}

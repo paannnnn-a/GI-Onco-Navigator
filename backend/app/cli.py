@@ -7,16 +7,17 @@ from pathlib import Path
 
 from backend.app.config import get_settings
 from backend.app.knowledge import chunk_pages, extract_docx_paragraphs, extract_pdf_pages
+from backend.app.ocr import RapidOcrEngine
 from backend.app.storage import Database
 
 
-def ingest_pdf(manifest_path: Path, pdf_path: Path) -> dict[str, object]:
+def ingest_pdf(manifest_path: Path, pdf_path: Path, use_ocr: bool = False) -> dict[str, object]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     database = Database(get_settings().sqlite_path)
     manifest["local_filename"] = pdf_path.name
     manifest["sha256"] = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
     database.add_source(manifest)
-    pages = extract_pdf_pages(pdf_path)
+    pages = extract_pdf_pages(pdf_path, RapidOcrEngine() if use_ocr else None)
     chunks = chunk_pages(pages)
     for chunk in chunks:
         database.add_chunk(
@@ -85,12 +86,19 @@ def main() -> None:
     ingest = subparsers.add_parser("ingest-pdf")
     ingest.add_argument("manifest", type=Path)
     ingest.add_argument("pdf", type=Path)
+    ingest.add_argument("--ocr", action="store_true", help="run fully local OCR on unreadable pages")
     ingest_docx_parser = subparsers.add_parser("ingest-docx")
     ingest_docx_parser.add_argument("manifest", type=Path)
     ingest_docx_parser.add_argument("docx", type=Path)
     args = parser.parse_args()
     if args.command == "ingest-pdf":
-        print(json.dumps(ingest_pdf(args.manifest, args.pdf), ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                ingest_pdf(args.manifest, args.pdf, use_ocr=args.ocr),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     elif args.command == "ingest-docx":
         print(json.dumps(ingest_docx(args.manifest, args.docx), ensure_ascii=False, indent=2))
 
