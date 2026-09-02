@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      python-runtime:
+        patterns: ["fastapi", "uvicorn*", "pydantic*", "sqlalchemy", "python-multipart"]
+      python-tooling:
+        dependency-type: development
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend-runtime:
+        dependency-type: production
+        patterns: ["*"]
+      frontend-tooling:
+        dependency-type: development
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
