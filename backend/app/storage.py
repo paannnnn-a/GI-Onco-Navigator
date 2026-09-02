@@ -171,6 +171,11 @@ class Database:
             ).fetchone()
         return PatientProfile.model_validate_json(row["payload_json"]) if row else None
 
+    def delete_patient(self, patient_id: str) -> bool:
+        with self.connect() as connection:
+            cursor = connection.execute("DELETE FROM patients WHERE patient_id = ?", (patient_id,))
+        return cursor.rowcount > 0
+
     def add_source(self, source: dict[str, object]) -> None:
         values = {
             "cancer_types_json": json.dumps(source.get("cancer_types", []), ensure_ascii=False),

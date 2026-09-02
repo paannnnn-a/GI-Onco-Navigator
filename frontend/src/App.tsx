@@ -14,6 +14,7 @@ type Profile = {
   province: string | null;
   city: string | null;
   accepts_cross_province_care: boolean;
+  consent_to_store: boolean;
 };
 type Topic = { category: string; title: string; purpose: string; suggested_questions: string[] };
 type Plan = {
@@ -35,6 +36,7 @@ type FacilityResponse = {
   official_registry_url: string;
   notice: string;
 };
+type PatientAccess = { patient_id: string; access_token: string; expires_at: string };
 
 const pathways: Record<CancerType, { title: string; subtitle: string }> = {
   colon: { title: "结肠癌术后导航", subtitle: "整理病理信息、定位阶段并准备复诊问题" },
@@ -80,6 +82,12 @@ export function App() {
   const [crossProvince, setCrossProvince] = useState(false);
   const [desiredServices, setDesiredServices] = useState("");
   const [facilities, setFacilities] = useState<FacilityResponse | null>(null);
+  const [saveConsent, setSaveConsent] = useState(false);
+  const [patientAccess, setPatientAccess] = useState<PatientAccess | null>(() => {
+    try { return JSON.parse(sessionStorage.getItem("gi-onco-patient-access") ?? "null"); }
+    catch { return null; }
+  });
+  const [recordStatus, setRecordStatus] = useState("");
   const [plan, setPlan] = useState<Plan | null>(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -89,7 +97,7 @@ export function App() {
 
   function profile(): Profile {
     return {
-      patient_id: "local-demo-patient",
+      patient_id: patientAccess?.patient_id ?? "local-demo-patient",
       cancer_type: cancerType,
       surgery_date: surgeryDate || null,
       pathological_stage: stage || null,
@@ -100,6 +108,7 @@ export function App() {
       province: province || null,
       city: city || null,
       accepts_cross_province_care: crossProvince,
+      consent_to_store: saveConsent,
     };
   }
 
@@ -137,6 +146,42 @@ export function App() {
         desired_services: desiredServices.split(/[，,、]/).map((value) => value.trim()).filter(Boolean),
       }));
     } catch (caught) { setError(caught instanceof Error ? caught.message : "查询失败"); }
+    finally { setLoading(false); }
+  }
+
+  async function saveRecord() {
+    if (!saveConsent) { setError("请先勾选明确同意保存本次结构化档案。"); return; }
+    setLoading(true); setError(""); setRecordStatus("");
+    try {
+      let access = patientAccess;
+      if (!access) {
+        access = await postJson<PatientAccess>("/api/v1/patient-access", {});
+        sessionStorage.setItem("gi-onco-patient-access", JSON.stringify(access));
+        setPatientAccess(access);
+      }
+      const record = { ...profile(), patient_id: access.patient_id, consent_to_store: true };
+      const response = await fetch(`/api/v1/patients/${access.patient_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${access.access_token}` },
+        body: JSON.stringify(record),
+      });
+      if (!response.ok) throw new Error("档案保存失败，请稍后重试。");
+      setRecordStatus("档案已保存；访问凭证仅保留在当前浏览器会话中。你可以随时删除。 ");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "保存失败"); }
+    finally { setLoading(false); }
+  }
+
+  async function deleteRecord() {
+    if (!patientAccess) return;
+    setLoading(true); setError("");
+    try {
+      const response = await fetch(`/api/v1/patients/${patientAccess.patient_id}`, {
+        method: "DELETE", headers: { "Authorization": `Bearer ${patientAccess.access_token}` },
+      });
+      if (!response.ok) throw new Error("档案删除失败，请稍后重试。");
+      sessionStorage.removeItem("gi-onco-patient-access"); setPatientAccess(null);
+      setSaveConsent(false); setRecordStatus("服务器中的结构化档案已删除。");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "删除失败"); }
     finally { setLoading(false); }
   }
 
@@ -178,7 +223,11 @@ export function App() {
             <div><label htmlFor="province">所在省份</label><input id="province" value={province} onChange={(event) => setProvince(event.target.value)} placeholder="例如 山东省" /></div>
             <div><label htmlFor="city">所在城市</label><input id="city" value={city} onChange={(event) => setCity(event.target.value)} placeholder="例如 济南市" /></div>
             <label className="check-field"><input type="checkbox" checked={crossProvince} onChange={(event) => setCrossProvince(event.target.checked)} />愿意查看跨省机构信息</label>
+            <label className="check-field consent"><input type="checkbox" checked={saveConsent} onChange={(event) => setSaveConsent(event.target.checked)} />我明确同意将以上结构化信息保存到当前部署的服务器；不包含姓名、证件号或手机号。</label>
             <button className="primary" onClick={createPlan} disabled={loading}>{loading ? "正在整理…" : "生成导航计划"}</button>
+            <button className="secondary" onClick={saveRecord} disabled={loading || !saveConsent}>保存我的档案</button>
+            {patientAccess && <button className="danger-link" onClick={deleteRecord} disabled={loading}>删除服务器档案</button>}
+            {recordStatus && <div className="record-status" role="status">{recordStatus}</div>}
             {error && <div className="error-message" role="alert">{error}</div>}
           </div>
         )}

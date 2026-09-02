@@ -146,6 +146,8 @@ def create_patient_access() -> PatientAccess:
 def save_patient(patient_id: str, patient: PatientProfile) -> PatientProfile:
     if patient_id != patient.patient_id:
         raise HTTPException(status_code=400, detail="patient_id in path and body must match")
+    if not patient.consent_to_store:
+        raise HTTPException(status_code=422, detail="explicit consent_to_store is required")
     database.save_patient(patient)
     database.log_event("patient_saved", patient_id, {"cancer_type": patient.cancer_type.value})
     return patient
@@ -159,6 +161,15 @@ def get_patient(patient_id: str) -> PatientProfile:
     if patient is None:
         raise HTTPException(status_code=404, detail="patient not found")
     return patient
+
+
+@app.delete(
+    "/api/v1/patients/{patient_id}", status_code=204, dependencies=[Depends(require_patient)]
+)
+def delete_patient(patient_id: str) -> Response:
+    deleted = database.delete_patient(patient_id)
+    database.log_event("patient_deleted", patient_id, {"record_existed": deleted})
+    return Response(status_code=204)
 
 
 @app.get("/api/v1/evidence/sources")

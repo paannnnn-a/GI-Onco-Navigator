@@ -41,6 +41,10 @@
 @media (max-width: 820px) { .admin-columns { grid-template-columns: 1fr; } .admin-header { align-items: start; gap: 1rem; } .admin-login { grid-template-columns: 1fr; } .reviewer-fields { grid-template-columns: 1fr; } .review-gates article { align-items: start; flex-direction: column; } }
 .check-field { display: flex !important; grid-column: 1 / -1; align-items: center; gap: .65rem !important; }
 .check-field input { width: 1rem; height: 1rem; }
+.check-field.consent { padding: .85rem; border-radius: 10px; background: #f0f7f3; font-weight: 500; }
+.secondary { border: 1px solid #185b45; border-radius: 9px; padding: .8rem 1rem; background: white; color: #185b45; font-weight: 700; cursor: pointer; }
+.danger-link { border: 0; background: transparent; color: #922d2d; text-decoration: underline; cursor: pointer; text-align: left; }
+.record-status { grid-column: 1 / -1; padding: .8rem; border-radius: 9px; background: #e5f5eb; color: #185b45; }
 .facility-box { margin-top: 1.2rem; padding: 1.4rem; border: 1px solid #d5e2dc; border-radius: 16px; background: #fbfdfc; display: grid; gap: .8rem; }
 .facility-box h3, .facility-box p { margin: 0; }
 .facility-box > input { padding: .85rem; border: 1px solid #bdccc5; border-radius: 9px; font: inherit; }

@@ -42,7 +42,9 @@ class ReviewDecision(StrEnum):
 
 
 class PatientProfile(BaseModel):
+    schema_version: str = "1.0"
     patient_id: str = Field(min_length=1, max_length=64)
+    consent_to_store: bool = False
     age: int | None = Field(default=None, ge=0, le=120)
     sex: str | None = Field(default=None, max_length=32)
     province: str | None = Field(default=None, max_length=64)
@@ -51,6 +53,11 @@ class PatientProfile(BaseModel):
     cancer_type: CancerType
     surgery_date: date | None = None
     surgery_type: str | None = Field(default=None, max_length=256)
+    diagnosis_date: date | None = None
+    pathology_report_date: date | None = None
+    tumor_location: str | None = Field(default=None, max_length=128)
+    histology: str | None = Field(default=None, max_length=128)
+    tumor_grade: str | None = Field(default=None, max_length=64)
     pathological_stage: str | None = Field(default=None, max_length=64)
     t_stage: str | None = Field(default=None, max_length=16)
     n_stage: str | None = Field(default=None, max_length=16)
@@ -59,6 +66,15 @@ class PatientProfile(BaseModel):
     lymph_nodes_examined: int | None = Field(default=None, ge=0)
     lymph_nodes_positive: int | None = Field(default=None, ge=0)
     mismatch_repair_status: str | None = Field(default=None, max_length=32)
+    ras_status: str | None = Field(default=None, max_length=32)
+    braf_status: str | None = Field(default=None, max_length=32)
+    her2_status: str | None = Field(default=None, max_length=32)
+    pd_l1_cps: float | None = Field(default=None, ge=0, le=100)
+    vascular_invasion: str | None = Field(default=None, max_length=32)
+    perineural_invasion: str | None = Field(default=None, max_length=32)
+    has_stoma: bool | None = None
+    baseline_weight_kg: float | None = Field(default=None, gt=0, le=500)
+    current_weight_kg: float | None = Field(default=None, gt=0, le=500)
     current_treatment: str | None = Field(default=None, max_length=256)
     symptoms: list[str] = Field(default_factory=list, max_length=30)
     medications: list[str] = Field(default_factory=list, max_length=50)
@@ -72,6 +88,18 @@ class PatientProfile(BaseModel):
             and self.lymph_nodes_positive > self.lymph_nodes_examined
         ):
             raise ValueError("positive lymph nodes cannot exceed examined lymph nodes")
+        if (
+            self.diagnosis_date is not None
+            and self.surgery_date is not None
+            and self.surgery_date < self.diagnosis_date
+        ):
+            raise ValueError("surgery date cannot be earlier than diagnosis date")
+        if (
+            self.surgery_date is not None
+            and self.pathology_report_date is not None
+            and self.pathology_report_date < self.surgery_date
+        ):
+            raise ValueError("pathology report date cannot be earlier than surgery date")
         return self
 
 

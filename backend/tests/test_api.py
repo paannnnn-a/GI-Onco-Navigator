@@ -13,6 +13,7 @@ def test_patient_round_trip_and_safe_empty_answer(tmp_path, monkeypatch) -> None
         "patient_id": access["patient_id"],
         "cancer_type": "colon",
         "surgery_date": "2026-08-20",
+        "consent_to_store": True,
     }
     url = f"/api/v1/patients/{access['patient_id']}"
     headers = {"Authorization": f"Bearer {access['access_token']}"}
@@ -26,6 +27,21 @@ def test_patient_round_trip_and_safe_empty_answer(tmp_path, monkeypatch) -> None
     assert response.status_code == 200
     assert response.json()["citations"] == []
     assert response.json()["requires_clinician_review"] is True
+    assert client.delete(url, headers=headers).status_code == 204
+    assert client.get(url, headers=headers).status_code == 404
+
+
+def test_patient_record_requires_explicit_storage_consent(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main, "database", Database(tmp_path / "consent.db"))
+    client = TestClient(main.app)
+    access = client.post("/api/v1/patient-access").json()
+    response = client.put(
+        f"/api/v1/patients/{access['patient_id']}",
+        json={"patient_id": access["patient_id"], "cancer_type": "gastric"},
+        headers={"Authorization": f"Bearer {access['access_token']}"},
+    )
+    assert response.status_code == 422
+    assert "consent" in response.json()["detail"]
 
 
 def test_rejects_prescriptive_question(tmp_path, monkeypatch) -> None:

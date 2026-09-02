@@ -16,3 +16,10 @@ def test_patient_roundtrip(tmp_path) -> None:
     assert actual is not None
     assert actual.cancer_type is CancerType.COLON
 
+
+def test_delete_patient_record(tmp_path) -> None:
+    database = Database(tmp_path / "delete.db")
+    profile = PatientProfile(patient_id="delete-me", cancer_type=CancerType.RECTAL)
+    database.save_patient(profile)
+    assert database.delete_patient("delete-me") is True
+    assert database.get_patient("delete-me") is None
