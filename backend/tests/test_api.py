@@ -54,6 +54,9 @@ def test_admin_source_registration_requires_key(tmp_path, monkeypatch) -> None:
         headers={"X-Admin-Key": main.settings.admin_api_key},
     )
     assert response.status_code == 201
+    assert client.get("/api/v1/evidence/sources").json() == []
+    assert client.get("/api/v1/admin/evidence/sources").status_code == 401
+    assert len(client.get("/api/v1/admin/evidence/sources", headers={"X-Admin-Key": main.settings.admin_api_key}).json()) == 1
 
 
 def test_navigation_plan_includes_symptom_topic() -> None:
@@ -67,6 +70,59 @@ def test_navigation_plan_includes_symptom_topic() -> None:
     )
     assert response.status_code == 200
     assert response.json()["topics"][0]["category"] == "symptoms"
+
+
+def test_evidence_requires_all_review_gates_before_patient_search(tmp_path, monkeypatch) -> None:
+    database = Database(tmp_path / "review.db")
+    monkeypatch.setattr(main, "database", database)
+    client = TestClient(main.app)
+    headers = {"X-Admin-Key": main.settings.admin_api_key}
+    source = {
+        "source_id": "review-source",
+        "title": "待审核患者资料",
+        "evidence_type": "patient_education",
+        "cancer_types": ["colon"],
+    }
+    assert client.post("/api/v1/admin/evidence/sources", json=source, headers=headers).status_code == 201
+    database.add_chunk(
+        {
+            "chunk_id": "review-chunk", "source_id": "review-source", "ordinal": 0,
+            "text": "复诊准备包括整理检查资料。", "page_start": 2, "page_end": 2,
+            "timestamp_start_seconds": None, "timestamp_end_seconds": None,
+            "section_path": [], "cancer_types": ["colon"], "tags": ["复诊"],
+            "extraction_method": "test_fixture", "review_status": "quarantined", "content_hash": "review",
+        }
+    )
+    assert database.search("复诊", "colon", approved_only=True) == []
+    dimensions = ["copyright", "extraction_quality", "medical_accuracy", "patient_readability"]
+    for dimension in dimensions:
+        response = client.post(
+            "/api/v1/admin/evidence/sources/review-source/reviews",
+            json={
+                "dimension": dimension, "decision": "approved", "reviewer": "Reviewer A",
+                "reason": "已核对原文、来源及患者适用性。",
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+    assert response.json()["review_status"] == "approved"
+    assert len(database.search("复诊", "colon", approved_only=True)) == 1
+
+
+def test_rejection_keeps_source_out_of_patient_search(tmp_path, monkeypatch) -> None:
+    database = Database(tmp_path / "rejected.db")
+    monkeypatch.setattr(main, "database", database)
+    database.add_source(
+        {
+            "source_id": "rejected", "title": "不合格资料", "evidence_type": "other", "version": None,
+            "publication_date": None, "cancer_types": ["rectal"], "intended_audience": "patient",
+            "copyright_status": "unknown", "license_name": None, "public_url": None,
+            "local_filename": None, "sha256": None, "supersedes_source_id": None,
+            "review_status": "quarantined", "metadata": {},
+        }
+    )
+    state = database.review_source("rejected", "medical_accuracy", "rejected", "Doctor B", "内容缺少可验证依据。")
+    assert state["review_status"] == "rejected"
 
 
 def test_approved_evidence_answer_contains_locator(tmp_path, monkeypatch) -> None:
@@ -105,10 +161,14 @@ def test_approved_evidence_answer_contains_locator(tmp_path, monkeypatch) -> Non
             "cancer_types": ["gastric"],
             "tags": ["复诊"],
             "extraction_method": "test_fixture",
-            "review_status": "approved",
+            "review_status": "quarantined",
             "content_hash": "fixture",
         }
     )
+    for dimension in ["copyright", "extraction_quality", "medical_accuracy", "patient_readability"]:
+        database.review_source(
+            "source-1", dimension, "approved", "Fixture Reviewer", "测试资料已完成对应审核。"
+        )
     response = TestClient(main.app).post(
         "/api/v1/navigation/question",
         json={

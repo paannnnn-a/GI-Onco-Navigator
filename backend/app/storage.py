@@ -65,7 +65,24 @@ CREATE TABLE IF NOT EXISTS audit_events (
   payload_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS source_reviews (
+  review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_id TEXT NOT NULL REFERENCES sources(source_id) ON DELETE CASCADE,
+  dimension TEXT NOT NULL,
+  decision TEXT NOT NULL,
+  reviewer TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_source_reviews_source ON source_reviews(source_id, review_id);
 """
+
+REQUIRED_REVIEW_DIMENSIONS = (
+    "copyright",
+    "extraction_quality",
+    "medical_accuracy",
+    "patient_readability",
+)
 
 
 def fts_text(value: str) -> str:
@@ -121,8 +138,13 @@ class Database:
             **source,
         }
         with self.connect() as connection:
+            existing = connection.execute(
+                "SELECT review_status FROM sources WHERE source_id = ?", (source["source_id"],)
+            ).fetchone()
+            # Registration and ingestion can never self-approve medical content.
+            values["review_status"] = existing["review_status"] if existing else "quarantined"
             connection.execute(
-                """INSERT OR REPLACE INTO sources(
+                """INSERT INTO sources(
                   source_id,title,evidence_type,version,publication_date,cancer_types_json,
                   intended_audience,copyright_status,license_name,public_url,local_filename,sha256,
                   supersedes_source_id,review_status,metadata_json
@@ -130,7 +152,15 @@ class Database:
                   :source_id,:title,:evidence_type,:version,:publication_date,:cancer_types_json,
                   :intended_audience,:copyright_status,:license_name,:public_url,:local_filename,:sha256,
                   :supersedes_source_id,:review_status,:metadata_json
-                )""",
+                ) ON CONFLICT(source_id) DO UPDATE SET
+                  title=excluded.title, evidence_type=excluded.evidence_type,
+                  version=excluded.version, publication_date=excluded.publication_date,
+                  cancer_types_json=excluded.cancer_types_json,
+                  intended_audience=excluded.intended_audience,
+                  copyright_status=excluded.copyright_status, license_name=excluded.license_name,
+                  public_url=excluded.public_url, local_filename=excluded.local_filename,
+                  sha256=excluded.sha256, supersedes_source_id=excluded.supersedes_source_id,
+                  metadata_json=excluded.metadata_json""",
                 values,
             )
 
@@ -140,6 +170,69 @@ class Database:
                 "SELECT * FROM sources ORDER BY publication_date DESC, title ASC"
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def get_source(self, source_id: str) -> dict[str, object] | None:
+        with self.connect() as connection:
+            row = connection.execute("SELECT * FROM sources WHERE source_id = ?", (source_id,)).fetchone()
+        return dict(row) if row else None
+
+    def review_source(
+        self, source_id: str, dimension: str, decision: str, reviewer: str, reason: str
+    ) -> dict[str, object]:
+        if dimension not in REQUIRED_REVIEW_DIMENSIONS:
+            raise ValueError("unsupported review dimension")
+        if decision not in {"approved", "rejected"}:
+            raise ValueError("unsupported review decision")
+        with self.connect() as connection:
+            source = connection.execute(
+                "SELECT source_id FROM sources WHERE source_id = ?", (source_id,)
+            ).fetchone()
+            if source is None:
+                raise KeyError(source_id)
+            connection.execute(
+                """INSERT INTO source_reviews(source_id,dimension,decision,reviewer,reason)
+                VALUES (?,?,?,?,?)""",
+                (source_id, dimension, decision, reviewer, reason),
+            )
+            latest = connection.execute(
+                """SELECT r.dimension, r.decision FROM source_reviews r
+                JOIN (
+                  SELECT dimension, MAX(review_id) review_id FROM source_reviews
+                  WHERE source_id = ? GROUP BY dimension
+                ) current ON current.review_id = r.review_id""",
+                (source_id,),
+            ).fetchall()
+            decisions = {row["dimension"]: row["decision"] for row in latest}
+            if "rejected" in decisions.values():
+                status = "rejected"
+            elif all(decisions.get(item) == "approved" for item in REQUIRED_REVIEW_DIMENSIONS):
+                status = "approved"
+            else:
+                status = "review_in_progress"
+            connection.execute("UPDATE sources SET review_status = ? WHERE source_id = ?", (status, source_id))
+            connection.execute(
+                "UPDATE evidence_chunks SET review_status = ? WHERE source_id = ?", (status, source_id)
+            )
+        return self.get_review_state(source_id)
+
+    def get_review_state(self, source_id: str) -> dict[str, object]:
+        source = self.get_source(source_id)
+        if source is None:
+            raise KeyError(source_id)
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT r.* FROM source_reviews r JOIN (
+                  SELECT dimension, MAX(review_id) review_id FROM source_reviews
+                  WHERE source_id = ? GROUP BY dimension
+                ) current ON current.review_id = r.review_id ORDER BY r.dimension""",
+                (source_id,),
+            ).fetchall()
+        return {
+            "source_id": source_id,
+            "review_status": source["review_status"],
+            "required_dimensions": list(REQUIRED_REVIEW_DIMENSIONS),
+            "latest_reviews": [dict(row) for row in rows],
+        }
 
     def log_event(self, event_type: str, subject_id: str | None, payload: dict[str, object]) -> None:
         with self.connect() as connection:
@@ -194,6 +287,7 @@ class Database:
             params.append(f'%"{cancer_type}"%')
         if approved_only:
             filters.append("c.review_status = 'approved'")
+            filters.append("s.review_status = 'approved'")
         params.append(limit)
         sql = f"""
           SELECT c.*, s.title, s.evidence_type, s.version, s.public_url,

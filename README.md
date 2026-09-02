@@ -17,6 +17,7 @@ GI-Onco Navigator 将患者结构化档案、术后阶段判断、医学资料�
 - 管理接口密钥鉴权与患者导航讨论清单
 - PDF 与 DOCX 资料导入；未审核资料默认隔离
 - 响应式 React 患者端，可调用后端完成阶段判断
+- 独立管理工作台与四维证据审核门禁（版权、提取质量、医学准确性、患者可读性）
 - Docker、CI、自动测试和可扩展 AI Benchmark
 
 > 默认不连接大模型。患者端保留检索到的原文证据片段，以降低无依据生成风险。模型生成可作为可选层接入，但仍须通过引用和安全校验。
@@ -30,6 +31,7 @@ docker compose up --build
 ```
 
 - 患者端：http://localhost:5173
+- 证据治理工作台：http://localhost:5173/admin（需 `ADMIN_API_KEY`）
 - API 文档：http://localhost:8000/docs
 - 健康检查：http://localhost:8000/health
 
@@ -52,7 +54,7 @@ gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf
 gi-onco ingest-docx data/sources/example.json /path/to/source.docx
 ```
 
-如果输出中的 `pages_needing_ocr` 非空，该来源不会因“导入成功”自动变为患者端可用；需完成 OCR、逐页质量检查和医学审核，再将切片状态改为 `approved`。
+如果输出中的 `pages_needing_ocr` 非空，该来源不会因“导入成功”自动变为患者端可用。任何注册或导入操作都只能把新来源放入隔离区；只有在管理工作台中完成版权、提取质量、医学准确性和患者可读性四项审核，来源及其切片才会同时变为 `approved`。审核决定、审核人、时间和理由均保留记录。
 
 ## 证据分层
 

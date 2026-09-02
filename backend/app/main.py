@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 from backend.app.config import get_settings
 from backend.app.schemas import (
+    EvidenceReviewRequest,
+    EvidenceReviewState,
     EvidenceSourceCreate,
     JourneyAssessment,
     NavigationAnswer,
@@ -75,14 +77,62 @@ def get_patient(patient_id: str) -> PatientProfile:
 
 @app.get("/api/v1/evidence/sources")
 def list_evidence_sources() -> list[dict[str, object]]:
+    public_fields = {"source_id", "title", "evidence_type", "version", "publication_date", "public_url"}
+    return [
+        {key: value for key, value in source.items() if key in public_fields}
+        for source in database.list_sources()
+        if source["review_status"] == "approved"
+    ]
+
+
+@app.get("/api/v1/admin/evidence/sources", dependencies=[Depends(require_admin)])
+def list_admin_evidence_sources() -> list[dict[str, object]]:
     return database.list_sources()
 
 
 @app.post("/api/v1/admin/evidence/sources", status_code=201, dependencies=[Depends(require_admin)])
 def create_evidence_source(source: EvidenceSourceCreate) -> dict[str, str]:
-    database.add_source(source.model_dump(mode="json"))
+    payload = source.model_dump(mode="json")
+    payload["review_status"] = "quarantined"
+    database.add_source(payload)
     database.log_event("source_registered", source.source_id, {"title": source.title})
     return {"source_id": source.source_id, "status": "registered"}
+
+
+@app.get(
+    "/api/v1/admin/evidence/sources/{source_id}/reviews",
+    response_model=EvidenceReviewState,
+    dependencies=[Depends(require_admin)],
+)
+def get_evidence_reviews(source_id: str) -> EvidenceReviewState:
+    try:
+        return EvidenceReviewState.model_validate(database.get_review_state(source_id))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="source not found") from exc
+
+
+@app.post(
+    "/api/v1/admin/evidence/sources/{source_id}/reviews",
+    response_model=EvidenceReviewState,
+    dependencies=[Depends(require_admin)],
+)
+def review_evidence_source(source_id: str, review: EvidenceReviewRequest) -> EvidenceReviewState:
+    try:
+        state = database.review_source(
+            source_id,
+            review.dimension.value,
+            review.decision.value,
+            review.reviewer,
+            review.reason,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="source not found") from exc
+    database.log_event(
+        "source_reviewed",
+        source_id,
+        {"dimension": review.dimension.value, "decision": review.decision.value, "reviewer": review.reviewer},
+    )
+    return EvidenceReviewState.model_validate(state)
 
 
 @app.post("/api/v1/journey/assess", response_model=JourneyAssessment)

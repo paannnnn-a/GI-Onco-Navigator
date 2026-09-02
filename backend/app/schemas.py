@@ -29,6 +29,18 @@ class EvidenceType(StrEnum):
     OTHER = "other"
 
 
+class ReviewDimension(StrEnum):
+    COPYRIGHT = "copyright"
+    EXTRACTION_QUALITY = "extraction_quality"
+    MEDICAL_ACCURACY = "medical_accuracy"
+    PATIENT_READABILITY = "patient_readability"
+
+
+class ReviewDecision(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class PatientProfile(BaseModel):
     patient_id: str = Field(min_length=1, max_length=64)
     age: int | None = Field(default=None, ge=0, le=120)
@@ -130,3 +142,27 @@ class EvidenceSourceCreate(BaseModel):
     supersedes_source_id: str | None = None
     review_status: str = "unreviewed"
     metadata: dict[str, object] = Field(default_factory=dict)
+
+
+class EvidenceReviewRequest(BaseModel):
+    dimension: ReviewDimension
+    decision: ReviewDecision
+    reviewer: str = Field(min_length=2, max_length=128)
+    reason: str = Field(min_length=5, max_length=2000)
+
+
+class EvidenceReviewRecord(BaseModel):
+    review_id: int
+    source_id: str
+    dimension: ReviewDimension
+    decision: ReviewDecision
+    reviewer: str
+    reason: str
+    created_at: datetime
+
+
+class EvidenceReviewState(BaseModel):
+    source_id: str
+    review_status: str
+    required_dimensions: list[ReviewDimension]
+    latest_reviews: list[EvidenceReviewRecord]
