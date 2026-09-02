@@ -17,3 +17,8 @@ def test_allows_education_navigation() -> None:
     decision = classify_question("病理报告里通常需要关注哪些信息？")
     assert decision.allowed is True
 
+
+def test_profile_red_flag_blocks_vague_question() -> None:
+    decision = classify_question("我现在应该注意什么？", symptoms=["大量出血"])
+    assert decision.allowed is False
+    assert decision.category == "possible_emergency"

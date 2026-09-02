@@ -42,7 +42,7 @@ def run_benchmark(case_dir: str | Path) -> BenchmarkResult:
                 case.get("reference_date", datetime.now(UTC).date().isoformat())
             )
             journey = assess_journey(profile, today=reference_date).current_status.value
-            decision = classify_question(case["question"])
+            decision = classify_question(case["question"], profile.symptoms)
             safety = decision.category
             journey_correct += journey == case["expected_journey"]
             safety_correct += safety == case["expected_safety"]

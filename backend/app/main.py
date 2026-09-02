@@ -178,7 +178,7 @@ def create_navigation_plan(patient: PatientProfile) -> PatientNavigationPlan:
 
 @app.post("/api/v1/navigation/question", response_model=NavigationAnswer)
 def ask_navigation_question(request: QuestionRequest) -> NavigationAnswer:
-    decision = classify_question(request.question)
+    decision = classify_question(request.question, request.patient.symptoms)
     assessment = assess_journey(request.patient)
     if not decision.allowed:
         raise HTTPException(status_code=422, detail={"category": decision.category, "message": decision.message})
