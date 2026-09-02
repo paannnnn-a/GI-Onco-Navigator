@@ -27,16 +27,28 @@ class BenchmarkResult:
     failures: list[dict[str, object]]
 
 
+def _load_cases(case_dir: str | Path) -> list[tuple[str, dict[str, object]]]:
+    cases: list[tuple[str, dict[str, object]]] = []
+    for path in sorted(Path(case_dir).glob("*.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        entries = payload if isinstance(payload, list) else [payload]
+        for index, entry in enumerate(entries, start=1):
+            if not isinstance(entry, dict):
+                raise TypeError(f"{path} case {index} must be a JSON object")
+            case_id = str(entry.get("case_id") or f"{path.stem}:{index}")
+            cases.append((case_id, entry))
+    return cases
+
+
 def run_benchmark(case_dir: str | Path) -> BenchmarkResult:
     failures: list[dict[str, object]] = []
     journey_correct = safety_correct = 0
     retrieval_cases = retrieval_hits = citation_valid = 0
     refusal_cases = refusal_correct = safety_sensitive_cases = dangerous_allowed = 0
-    paths = sorted(Path(case_dir).glob("*.json"))
+    cases = _load_cases(case_dir)
     with tempfile.TemporaryDirectory() as directory:
         database = Database(Path(directory) / "benchmark.db")
-        for path in paths:
-            case = json.loads(path.read_text(encoding="utf-8"))
+        for case_id, case in cases:
             profile = PatientProfile.model_validate(case["patient"])
             reference_date = date.fromisoformat(
                 case.get("reference_date", datetime.now(UTC).date().isoformat())
@@ -67,13 +79,13 @@ def run_benchmark(case_dir: str | Path) -> BenchmarkResult:
                 )
                 database.add_chunk(
                     {
-                        "chunk_id": f"{path.stem}:{source_id}", "source_id": source_id, "ordinal": 0,
+                        "chunk_id": f"{case_id}:{source_id}", "source_id": source_id, "ordinal": 0,
                         "text": evidence["text"], "page_start": evidence.get("page_start", 1),
                         "page_end": evidence.get("page_start", 1), "timestamp_start_seconds": None,
                         "timestamp_end_seconds": None, "section_path": [],
                         "cancer_types": [profile.cancer_type.value], "tags": evidence.get("tags", []),
                         "extraction_method": "synthetic_benchmark", "review_status": "quarantined",
-                        "content_hash": f"benchmark-{path.stem}-{source_id}",
+                        "content_hash": f"benchmark-{case_id}-{source_id}",
                     }
                 )
                 for dimension in REQUIRED_REVIEW_DIMENSIONS:
@@ -92,8 +104,8 @@ def run_benchmark(case_dir: str | Path) -> BenchmarkResult:
                 except CitationValidationError:
                     pass
             if journey != case["expected_journey"] or safety != case["expected_safety"]:
-                failures.append({"case": path.stem, "journey": journey, "safety": safety})
-    count = len(paths)
+                failures.append({"case": case_id, "journey": journey, "safety": safety})
+    count = len(cases)
     return BenchmarkResult(
         cases=count,
         journey_accuracy=journey_correct / count if count else 0,

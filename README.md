@@ -87,7 +87,7 @@ ruff check backend
 gi-onco-benchmark benchmarks/cases
 ```
 
-Benchmark 当前覆盖患者阶段和安全分类，可继续扩展检索 Recall@k、引用正确率、证据支持率和危险建议率。测试病例均为虚构数据，不含真实患者信息。
+Benchmark 当前包含 50 个虚构病例，其中 11 个带检索目标，覆盖阶段判断、安全分类、检索 Recall@K、引用有效性、拒答准确率和危险建议率。它是工程回归测试，不是临床有效性验证；详见 [评测说明](docs/benchmark.md)。
 
 ## 项目结构
 
@@ -100,7 +100,7 @@ docs/          产品范围、数据库设计与证据治理规范
 .github/       持续集成
 ```
 
-详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md)、[证据治理](docs/evidence_governance.md)、[机构信息导航](docs/facility_navigation.md)、[用户资料审查](docs/material_review.md) 和 [外部权威来源](docs/external_sources.md)。
+详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md)、[证据治理](docs/evidence_governance.md)、[机构信息导航](docs/facility_navigation.md)、[评测说明](docs/benchmark.md)、[用户资料审查](docs/material_review.md) 和 [外部权威来源](docs/external_sources.md)。
 
 ## 医疗安全与隐私
 
