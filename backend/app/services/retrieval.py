@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from collections import Counter
 from math import sqrt
@@ -113,5 +114,6 @@ def citation_from_row(row: dict[str, object]) -> Citation:
         ),
         excerpt=str(row["text"])[:500],
         public_url=str(row["public_url"]) if row.get("public_url") else None,
+        section_path=json.loads(str(row.get("section_path_json") or "[]")),
         review_status=str(row["review_status"]),
     )

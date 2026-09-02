@@ -15,7 +15,7 @@ GI-Onco Navigator 将患者结构化档案、术后阶段判断、医学资料�
 - 仅使用 `approved` 片段的患者端抽取式回答
 - 患者档案短期签名访问令牌、资料注册与问答操作的审计记录
 - 管理接口密钥鉴权与患者导航讨论清单
-- PDF、DOCX 与带时间戳字幕资料导入；未审核资料默认隔离
+- PDF、DOCX、受限 HTTPS 网页与带时间戳字幕资料导入；未审核资料默认隔离
 - 响应式 React 患者端，可调用后端完成阶段判断
 - 独立管理工作台与四维证据审核门禁（版权、提取质量、医学准确性、患者可读性）
 - Docker、CI、自动测试和可扩展 AI Benchmark
@@ -56,9 +56,12 @@ python -m venv .venv
 gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf
 gi-onco ingest-docx data/sources/example.json /path/to/source.docx
 gi-onco ingest-transcript data/sources/video.json /path/to/verified-subtitles.srt
+gi-onco ingest-web data/sources/nci-colon-patient-pdq.json
 ```
 
 视频资料使用人工核对后的 UTF-8 SRT 或 WebVTT 字幕导入，每个切片保留原视频起止时间。字幕导入后仍处于隔离区，不能绕过四项审核门禁。
+
+网页导入仅接受不含凭证的公开 HTTPS 地址，并拒绝本机、内网和保留地址，限制响应类型及大小。系统清除脚本、样式和导航内容，以标题与内容块作为引用定位，同时保存抓取内容哈希。网页内容同样必须经过四项审核，外语资料还需要人工翻译与医学复核。
 
 如果输出中的 `pages_needing_ocr` 非空，该来源不会因“导入成功”自动变为患者端可用。任何注册或导入操作都只能把新来源放入隔离区；只有在管理工作台中完成版权、提取质量、医学准确性和患者可读性四项审核，来源及其切片才会同时变为 `approved`。审核决定、审核人、时间和理由均保留记录。
 

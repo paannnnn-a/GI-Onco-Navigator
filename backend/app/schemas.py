@@ -101,6 +101,7 @@ class Citation(BaseModel):
     timestamp_start_seconds: int | None = Field(default=None, ge=0)
     excerpt: str | None = None
     public_url: str | None = None
+    section_path: list[str] = Field(default_factory=list)
     review_status: str = "unreviewed"
 
 

@@ -25,3 +25,12 @@ def test_approved_citation_with_page_is_valid() -> None:
         page_start=1,
     )
     validate_citations([citation])
+
+
+def test_approved_web_citation_with_section_is_valid() -> None:
+    citation = Citation(
+        source_id="web", title="官方网页", evidence_type=EvidenceType.PATIENT_EDUCATION,
+        review_status="approved", public_url="https://example.org/patient",
+        section_path=["复诊准备", "内容块 1"],
+    )
+    validate_citations([citation])

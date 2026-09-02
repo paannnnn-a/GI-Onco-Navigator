@@ -15,8 +15,12 @@ def validate_citations(citations: list[Citation], patient_facing: bool = True) -
             raise CitationValidationError(
                 f"source {citation.source_id} is not approved for patient-facing use"
             )
-        if citation.page_start is None and citation.timestamp_start_seconds is None:
+        has_web_locator = bool(citation.public_url and citation.section_path)
+        if (
+            citation.page_start is None
+            and citation.timestamp_start_seconds is None
+            and not has_web_locator
+        ):
             raise CitationValidationError(
-                f"source {citation.source_id} has no page or timestamp locator"
+                f"source {citation.source_id} has no page, timestamp, or webpage section locator"
             )
-
