@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 
 from backend.app import main
@@ -93,6 +95,100 @@ def test_admin_source_registration_requires_key(tmp_path, monkeypatch) -> None:
     assert client.get("/api/v1/evidence/sources").json() == []
     assert client.get("/api/v1/admin/evidence/sources").status_code == 401
     assert len(client.get("/api/v1/admin/evidence/sources", headers={"X-Admin-Key": main.settings.admin_api_key}).json()) == 1
+
+
+def test_admin_can_upload_transcript_only_into_quarantine(tmp_path, monkeypatch) -> None:
+    database = Database(tmp_path / "upload.db")
+    monkeypatch.setattr(main, "database", database)
+    client = TestClient(main.app)
+    manifest = {
+        "source_id": "uploaded-transcript",
+        "title": "合成专家视频字幕",
+        "evidence_type": "expert_video",
+        "cancer_types": ["colon"],
+        "copyright_status": "synthetic_test_permission",
+    }
+    response = client.post(
+        "/api/v1/admin/evidence/uploads",
+        data={"manifest_json": json.dumps(manifest, ensure_ascii=False)},
+        files={
+            "file": (
+                "verified.srt",
+                "1\n00:00:01,000 --> 00:00:05,000\n这是完全虚构的测试字幕。\n".encode(),
+                "application/x-subrip",
+            )
+        },
+        headers={"X-Admin-Key": main.settings.admin_api_key},
+    )
+    assert response.status_code == 201
+    assert response.json()["status"] == "quarantined"
+    assert response.json()["chunks"] == 1
+    source = database.get_source("uploaded-transcript")
+    assert source is not None
+    assert source["review_status"] == "quarantined"
+    assert source["local_filename"] == "verified.srt"
+    total, chunks = database.list_source_chunks("uploaded-transcript", 0, 10)
+    assert total == 1
+    assert chunks[0]["timestamp_start_seconds"] == 1
+
+
+def test_admin_upload_rejects_unsupported_or_disguised_file(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main, "database", Database(tmp_path / "rejected-upload.db"))
+    client = TestClient(main.app)
+    headers = {"X-Admin-Key": main.settings.admin_api_key}
+    manifest = json.dumps(
+        {
+            "source_id": "bad-upload",
+            "title": "无效上传",
+            "evidence_type": "other",
+            "copyright_status": "synthetic_test_permission",
+        },
+        ensure_ascii=False,
+    )
+    unsupported = client.post(
+        "/api/v1/admin/evidence/uploads",
+        data={"manifest_json": manifest},
+        files={"file": ("source.exe", b"not executable", "application/octet-stream")},
+        headers=headers,
+    )
+    assert unsupported.status_code == 415
+    disguised = client.post(
+        "/api/v1/admin/evidence/uploads",
+        data={"manifest_json": manifest},
+        files={"file": ("source.pdf", b"not a pdf", "application/pdf")},
+        headers=headers,
+    )
+    assert disguised.status_code == 422
+
+
+def test_admin_upload_cannot_replace_existing_source(tmp_path, monkeypatch) -> None:
+    database = Database(tmp_path / "duplicate-upload.db")
+    monkeypatch.setattr(main, "database", database)
+    database.add_source(
+        {
+            "source_id": "existing-source", "title": "已有来源", "evidence_type": "guideline",
+            "version": "1", "publication_date": None, "cancer_types": ["colon"],
+            "intended_audience": "patient", "copyright_status": "open_license",
+            "license_name": "test", "public_url": None, "local_filename": None,
+            "sha256": None, "supersedes_source_id": None, "review_status": "quarantined",
+            "metadata": {},
+        }
+    )
+    response = TestClient(main.app).post(
+        "/api/v1/admin/evidence/uploads",
+        data={
+            "manifest_json": json.dumps(
+                {
+                    "source_id": "existing-source", "title": "替换内容",
+                    "evidence_type": "guideline", "copyright_status": "open_license",
+                }
+            )
+        },
+        files={"file": ("replacement.srt", b"1\n00:00:01,000 --> 00:00:02,000\ntest\n")},
+        headers={"X-Admin-Key": main.settings.admin_api_key},
+    )
+    assert response.status_code == 409
+    assert database.get_source("existing-source")["title"] == "已有来源"
 
 
 def test_navigation_plan_includes_symptom_topic() -> None:

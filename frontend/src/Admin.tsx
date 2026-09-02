@@ -1,4 +1,4 @@
-import { CheckCircle2, ClipboardCheck, LockKeyhole, RefreshCw, ShieldAlert } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, LockKeyhole, RefreshCw, ShieldAlert, Upload } from "lucide-react";
 import { useState } from "react";
 
 type Dimension = "copyright" | "extraction_quality" | "medical_accuracy" | "patient_readability";
@@ -24,15 +24,45 @@ export function Admin() {
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadId, setUploadId] = useState("");
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadType, setUploadType] = useState("patient_education");
+  const [uploadCancer, setUploadCancer] = useState("colon");
+  const [uploadCopyright, setUploadCopyright] = useState("unknown");
+  const [uploadNotice, setUploadNotice] = useState("");
 
   async function api<T>(path: string, init?: RequestInit): Promise<T> {
+    const isForm = init?.body instanceof FormData;
     const response = await fetch(path, {
       ...init,
-      headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey, ...init?.headers },
+      headers: { ...(!isForm ? { "Content-Type": "application/json" } : {}), "X-Admin-Key": adminKey, ...init?.headers },
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.detail ?? "操作未完成");
     return body as T;
+  }
+
+  async function uploadEvidence() {
+    if (!uploadFile || !uploadId.trim() || !uploadTitle.trim()) {
+      setError("请选择资料文件，并填写来源编号和标题。"); return;
+    }
+    setBusy(true); setError(""); setUploadNotice("");
+    const form = new FormData();
+    form.append("manifest_json", JSON.stringify({
+      source_id: uploadId.trim(), title: uploadTitle.trim(), evidence_type: uploadType,
+      cancer_types: [uploadCancer], copyright_status: uploadCopyright,
+      metadata: { uploaded_from: "admin_workbench" },
+    }));
+    form.append("file", uploadFile);
+    try {
+      const result = await api<{ chunks: number; status: string; pages_needing_ocr?: number[] }>("/api/v1/admin/evidence/uploads", { method: "POST", body: form });
+      const ocr = result.pages_needing_ocr?.length ? `；${result.pages_needing_ocr.length} 页需要 OCR` : "";
+      setUploadNotice(`已提取 ${result.chunks} 个内容块并强制进入隔离区${ocr}。`);
+      setUploadFile(null); setUploadId(""); setUploadTitle("");
+      await loadSources();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "资料上传失败"); }
+    finally { setBusy(false); }
   }
 
   async function loadSources() {
@@ -92,6 +122,17 @@ export function Admin() {
   return <main className="admin-shell">
     <header className="admin-header"><div><span className="eyebrow">GI-Onco Navigator</span><h1>证据治理工作台</h1><p>资料默认隔离。四项审核全部通过后，才允许进入患者检索。</p></div><a href="/">返回患者端</a></header>
     <section className="admin-login"><LockKeyhole /><label>管理密钥<input type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} placeholder="仅保存在当前页面内存中" /></label><button onClick={loadSources} disabled={busy || !adminKey}><RefreshCw size={17} /> 连接并刷新</button></section>
+    <section className="evidence-upload">
+      <div><Upload /><span><b>导入待审核资料</b><small>仅支持不超过 25 MiB 的 PDF、DOCX、SRT 或 VTT；上传不会自动发布。</small></span></div>
+      <label>来源编号<input value={uploadId} onChange={(event) => setUploadId(event.target.value)} placeholder="例如 hospital-video-2026-01" /></label>
+      <label>资料标题<input value={uploadTitle} onChange={(event) => setUploadTitle(event.target.value)} placeholder="完整、可识别的来源标题" /></label>
+      <label>证据类型<select value={uploadType} onChange={(event) => setUploadType(event.target.value)}><option value="guideline">临床指南</option><option value="peer_reviewed">同行评议研究</option><option value="patient_education">患者教育</option><option value="expert_video">专家视频</option><option value="other">其他</option></select></label>
+      <label>适用癌种<select value={uploadCancer} onChange={(event) => setUploadCancer(event.target.value)}><option value="colon">结肠癌</option><option value="rectal">直肠癌</option><option value="gastric">胃癌</option><option value="other_gi">其他消化道肿瘤</option></select></label>
+      <label>版权状态<select value={uploadCopyright} onChange={(event) => setUploadCopyright(event.target.value)}><option value="unknown">尚未核实</option><option value="licensed_local_use">已获本地使用授权</option><option value="open_license">开放许可</option><option value="public_domain">公有领域</option><option value="metadata_only">仅保存元数据</option></select></label>
+      <label className="upload-file">选择文件<input type="file" accept=".pdf,.docx,.srt,.vtt" onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)} /></label>
+      <button onClick={uploadEvidence} disabled={busy || !adminKey || !uploadFile}>上传并隔离</button>
+      {uploadNotice && <p className="upload-notice" role="status">{uploadNotice}</p>}
+    </section>
     {error && <div className="error-message" role="alert">{error}</div>}
     <div className="admin-columns">
       <section className="source-list"><h2>资料来源 <small>{sources.length}</small></h2>{sources.length === 0 && <p className="admin-empty">连接后查看已登记资料。</p>}{sources.map((source) => <button key={source.source_id} onClick={() => openSource(source)} className={selected?.source_id === source.source_id ? "selected" : ""}><span><b>{source.title}</b><small>{source.evidence_type}{source.version ? ` · ${source.version}` : ""}</small></span><em data-status={source.review_status}>{source.review_status}</em></button>)}</section>

@@ -18,10 +18,15 @@ from backend.app.storage import Database
 from backend.app.web_ingest import extract_web_chunks, fetch_public_webpage
 
 
-def ingest_pdf(manifest_path: Path, pdf_path: Path, use_ocr: bool = False) -> dict[str, object]:
+def ingest_pdf(
+    manifest_path: Path,
+    pdf_path: Path,
+    use_ocr: bool = False,
+    target_database: Database | None = None,
+) -> dict[str, object]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    database = Database(get_settings().sqlite_path)
-    manifest["local_filename"] = pdf_path.name
+    database = target_database or Database(get_settings().sqlite_path)
+    manifest["local_filename"] = manifest.get("local_filename") or pdf_path.name
     manifest["sha256"] = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
     database.add_source(manifest)
     pages = extract_pdf_pages(pdf_path, RapidOcrEngine() if use_ocr else None)
@@ -55,10 +60,12 @@ def ingest_pdf(manifest_path: Path, pdf_path: Path, use_ocr: bool = False) -> di
     return result
 
 
-def ingest_docx(manifest_path: Path, docx_path: Path) -> dict[str, object]:
+def ingest_docx(
+    manifest_path: Path, docx_path: Path, target_database: Database | None = None
+) -> dict[str, object]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    database = Database(get_settings().sqlite_path)
-    manifest["local_filename"] = docx_path.name
+    database = target_database or Database(get_settings().sqlite_path)
+    manifest["local_filename"] = manifest.get("local_filename") or docx_path.name
     manifest["sha256"] = hashlib.sha256(docx_path.read_bytes()).hexdigest()
     database.add_source(manifest)
     blocks = extract_docx_paragraphs(docx_path)
@@ -87,10 +94,12 @@ def ingest_docx(manifest_path: Path, docx_path: Path) -> dict[str, object]:
     return result
 
 
-def ingest_transcript(manifest_path: Path, transcript_path: Path) -> dict[str, object]:
+def ingest_transcript(
+    manifest_path: Path, transcript_path: Path, target_database: Database | None = None
+) -> dict[str, object]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    database = Database(get_settings().sqlite_path)
-    manifest["local_filename"] = transcript_path.name
+    database = target_database or Database(get_settings().sqlite_path)
+    manifest["local_filename"] = manifest.get("local_filename") or transcript_path.name
     manifest["sha256"] = hashlib.sha256(transcript_path.read_bytes()).hexdigest()
     database.add_source(manifest)
     cues = extract_transcript_cues(transcript_path)

@@ -1,15 +1,30 @@
 import hashlib
+import json
 import logging
 import secrets
+import tempfile
 import time
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Annotated
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend.app.auth import InvalidPatientToken, issue_patient_token, verify_patient_token
+from backend.app.cli import ingest_docx, ingest_pdf, ingest_transcript
 from backend.app.config import get_settings
 from backend.app.observability import Metrics
 from backend.app.schemas import (
@@ -246,6 +261,69 @@ def create_evidence_source(source: EvidenceSourceCreate) -> dict[str, str]:
     database.add_source(payload)
     database.log_event("source_registered", source.source_id, {"title": source.title})
     return {"source_id": source.source_id, "status": "registered"}
+
+
+MAX_EVIDENCE_UPLOAD_BYTES = 25 * 1024 * 1024
+ALLOWED_EVIDENCE_SUFFIXES = {".pdf", ".docx", ".srt", ".vtt"}
+
+
+@app.post(
+    "/api/v1/admin/evidence/uploads",
+    status_code=201,
+    dependencies=[Depends(require_admin)],
+)
+async def upload_evidence_source(
+    manifest_json: Annotated[str, Form()], file: Annotated[UploadFile, File()]
+) -> dict[str, object]:
+    """Extract an uploaded source into quarantine; this endpoint can never publish it."""
+    original_name = Path(file.filename or "").name
+    suffix = Path(original_name).suffix.lower()
+    if suffix not in ALLOWED_EVIDENCE_SUFFIXES:
+        raise HTTPException(status_code=415, detail="supported files: PDF, DOCX, SRT, or VTT")
+    try:
+        source = EvidenceSourceCreate.model_validate_json(manifest_json)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="invalid evidence source metadata") from exc
+    if database.get_source(source.source_id) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="source_id already exists; register a new version with a new source_id",
+        )
+
+    payload = bytearray()
+    while chunk := await file.read(1024 * 1024):
+        payload.extend(chunk)
+        if len(payload) > MAX_EVIDENCE_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="evidence file exceeds 25 MiB limit")
+    await file.close()
+    if not payload:
+        raise HTTPException(status_code=422, detail="evidence file is empty")
+    if suffix == ".pdf" and not payload.startswith(b"%PDF-"):
+        raise HTTPException(status_code=422, detail="file content is not a PDF")
+    if suffix == ".docx" and not payload.startswith(b"PK"):
+        raise HTTPException(status_code=422, detail="file content is not a DOCX archive")
+
+    manifest = source.model_dump(mode="json")
+    manifest["review_status"] = "quarantined"
+    manifest["local_filename"] = original_name
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            directory_path = Path(directory)
+            manifest_path = directory_path / "manifest.json"
+            source_path = directory_path / f"source{suffix}"
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+            source_path.write_bytes(payload)
+            if suffix == ".pdf":
+                result = ingest_pdf(manifest_path, source_path, target_database=database)
+            elif suffix == ".docx":
+                result = ingest_docx(manifest_path, source_path, target_database=database)
+            else:
+                result = ingest_transcript(manifest_path, source_path, target_database=database)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="file could not be safely extracted") from exc
+    result["status"] = "quarantined"
+    result["original_filename"] = original_name
+    return result
 
 
 @app.post("/api/v1/admin/facilities", status_code=201, dependencies=[Depends(require_admin)])
