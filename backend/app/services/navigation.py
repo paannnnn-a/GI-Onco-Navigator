@@ -15,6 +15,15 @@ def build_navigation_plan(profile: PatientProfile) -> PatientNavigationPlan:
             ],
         ),
         NavigationTopic(
+            category="facility_navigation",
+            title="就医机构信息",
+            purpose="按地点偏好和经核验的公开服务标签筛选机构，并通过官方登记入口再次核实。",
+            suggested_questions=[
+                "哪些机构的公开服务范围与我需要讨论的问题相关？",
+                "跨省就医前需要向医保和目标机构确认哪些事项？",
+            ],
+        ),
+        NavigationTopic(
             category="follow_up",
             title="复诊与随访准备",
             purpose="将时间安排和需要携带的资料整理成清单。",

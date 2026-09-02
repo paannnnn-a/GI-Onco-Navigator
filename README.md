@@ -20,6 +20,7 @@ GI-Onco Navigator 将患者结构化档案、术后阶段判断、医学资料�
 - 独立管理工作台与四维证据审核门禁（版权、提取质量、医学准确性、患者可读性）
 - Docker、CI、自动测试和可扩展 AI Benchmark
 - 请求追踪、脱敏审计、Prometheus 基础指标以及容器存活/就绪检查
+- 基于官方登记、地点偏好和公开服务标签的非排名式机构信息筛选
 
 > 默认不连接大模型。患者端保留检索到的原文证据片段，以降低无依据生成风险。模型生成可作为可选层接入，但仍须通过引用和安全校验。
 
@@ -96,7 +97,7 @@ docs/          产品范围、数据库设计与证据治理规范
 .github/       持续集成
 ```
 
-详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md)、[证据治理](docs/evidence_governance.md)、[用户资料审查](docs/material_review.md) 和 [外部权威来源](docs/external_sources.md)。
+详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md)、[证据治理](docs/evidence_governance.md)、[机构信息导航](docs/facility_navigation.md)、[用户资料审查](docs/material_review.md) 和 [外部权威来源](docs/external_sources.md)。
 
 ## 医疗安全与隐私
 

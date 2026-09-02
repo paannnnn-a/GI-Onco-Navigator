@@ -11,6 +11,9 @@ type Profile = {
   mismatch_repair_status: string | null;
   current_treatment: string | null;
   symptoms: string[];
+  province: string | null;
+  city: string | null;
+  accepts_cross_province_care: boolean;
 };
 type Topic = { category: string; title: string; purpose: string; suggested_questions: string[] };
 type Plan = {
@@ -26,6 +29,11 @@ type Answer = {
   answer: string;
   citations: { title: string; version?: string; page_start?: number; excerpt?: string }[];
   limitations: string[];
+};
+type FacilityResponse = {
+  matches: { facility_id: string; name: string; province: string; city: string; matched_reasons: string[]; unmatched_services: string[]; official_registration_url: string; official_website?: string; disclaimer: string }[];
+  official_registry_url: string;
+  notice: string;
 };
 
 const pathways: Record<CancerType, { title: string; subtitle: string }> = {
@@ -67,6 +75,11 @@ export function App() {
   const [mmr, setMmr] = useState("");
   const [treatment, setTreatment] = useState("");
   const [symptoms, setSymptoms] = useState("");
+  const [province, setProvince] = useState("");
+  const [city, setCity] = useState("");
+  const [crossProvince, setCrossProvince] = useState(false);
+  const [desiredServices, setDesiredServices] = useState("");
+  const [facilities, setFacilities] = useState<FacilityResponse | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -84,6 +97,9 @@ export function App() {
       mismatch_repair_status: mmr || null,
       current_treatment: treatment || null,
       symptoms: symptoms.split(/[，,、]/).map((value) => value.trim()).filter(Boolean),
+      province: province || null,
+      city: city || null,
+      accepts_cross_province_care: crossProvince,
     };
   }
 
@@ -111,6 +127,17 @@ export function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function findFacilities() {
+    setLoading(true); setError("");
+    try {
+      setFacilities(await postJson<FacilityResponse>("/api/v1/facilities/match", {
+        patient: profile(),
+        desired_services: desiredServices.split(/[，,、]/).map((value) => value.trim()).filter(Boolean),
+      }));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "查询失败"); }
+    finally { setLoading(false); }
   }
 
   return (
@@ -148,6 +175,9 @@ export function App() {
             <div><label htmlFor="mmr">MMR / MSI 状态</label><input id="mmr" value={mmr} onChange={(event) => setMmr(event.target.value)} placeholder="例如 pMMR；不清楚可留空" /></div>
             <div><label htmlFor="treatment">当前治疗记录</label><input id="treatment" value={treatment} onChange={(event) => setTreatment(event.target.value)} placeholder="只记录医生已确定的治疗" /></div>
             <div><label htmlFor="symptoms">当前症状</label><input id="symptoms" value={symptoms} onChange={(event) => setSymptoms(event.target.value)} placeholder="多个症状用逗号分隔" /></div>
+            <div><label htmlFor="province">所在省份</label><input id="province" value={province} onChange={(event) => setProvince(event.target.value)} placeholder="例如 山东省" /></div>
+            <div><label htmlFor="city">所在城市</label><input id="city" value={city} onChange={(event) => setCity(event.target.value)} placeholder="例如 济南市" /></div>
+            <label className="check-field"><input type="checkbox" checked={crossProvince} onChange={(event) => setCrossProvince(event.target.checked)} />愿意查看跨省机构信息</label>
             <button className="primary" onClick={createPlan} disabled={loading}>{loading ? "正在整理…" : "生成导航计划"}</button>
             {error && <div className="error-message" role="alert">{error}</div>}
           </div>
@@ -160,6 +190,13 @@ export function App() {
             <div className="topic-grid">{plan.topics.map((topic) => <article key={topic.category}><span>{topic.title}</span><p>{topic.purpose}</p><ul>{topic.suggested_questions.map((item) => <li key={item}>{item}</li>)}</ul></article>)}</div>
           </div>
         )}
+        {plan && <div className="facility-box">
+          <div><h3>机构信息筛选</h3><p>只按地点和已核验的公开服务标签筛选，不提供医院或医生排名。</p></div>
+          <label htmlFor="services">希望了解的服务</label>
+          <input id="services" value={desiredServices} onChange={(event) => setDesiredServices(event.target.value)} placeholder="例如 营养门诊、造口门诊、多学科门诊" />
+          <button className="primary" onClick={findFacilities} disabled={loading}>查询核验信息</button>
+          {facilities && <div className="facility-results"><p>{facilities.notice}</p>{facilities.matches.length === 0 ? <div className="empty-evidence">当前目录没有符合条件且已核验的机构。可前往<a href={facilities.official_registry_url} target="_blank" rel="noreferrer">国家卫生健康委医院执业登记查询</a>自行核实。</div> : facilities.matches.map((item) => <article key={item.facility_id}><h4>{item.name}</h4><small>{item.province} · {item.city}</small><ul>{item.matched_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>{item.unmatched_services.length > 0 && <p>尚未核实：{item.unmatched_services.join("、")}</p>}<a href={item.official_registration_url} target="_blank" rel="noreferrer">查看官方登记</a><p className="facility-disclaimer">{item.disclaimer}</p></article>)}</div>}
+        </div>}
       </section>
 
       <section id="evidence" className="evidence-band">

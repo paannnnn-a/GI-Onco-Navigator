@@ -167,3 +167,42 @@ class EvidenceReviewState(BaseModel):
     review_status: str
     required_dimensions: list[ReviewDimension]
     latest_reviews: list[EvidenceReviewRecord]
+
+
+class FacilityCreate(BaseModel):
+    facility_id: str = Field(min_length=1, max_length=128)
+    name: str = Field(min_length=2, max_length=300)
+    province: str = Field(min_length=2, max_length=64)
+    city: str = Field(min_length=2, max_length=64)
+    official_registration_url: str = Field(pattern=r"^https://")
+    official_website: str | None = Field(default=None, pattern=r"^https://")
+    cancer_types: list[CancerType] = Field(default_factory=list)
+    service_tags: list[str] = Field(default_factory=list, max_length=50)
+    verification_status: str = "verified"
+    verified_at: date
+    verification_note: str = Field(min_length=5, max_length=1000)
+
+
+class FacilityMatchRequest(BaseModel):
+    patient: PatientProfile
+    desired_services: list[str] = Field(default_factory=list, max_length=20)
+
+
+class FacilityMatch(BaseModel):
+    facility_id: str
+    name: str
+    province: str
+    city: str
+    official_registration_url: str
+    official_website: str | None = None
+    matched_reasons: list[str]
+    unmatched_services: list[str]
+    verification_status: str
+    verified_at: date
+    disclaimer: str
+
+
+class FacilityMatchResponse(BaseModel):
+    matches: list[FacilityMatch]
+    official_registry_url: str
+    notice: str

@@ -16,12 +16,16 @@ from backend.app.schemas import (
     EvidenceReviewRequest,
     EvidenceReviewState,
     EvidenceSourceCreate,
+    FacilityCreate,
+    FacilityMatchRequest,
+    FacilityMatchResponse,
     JourneyAssessment,
     NavigationAnswer,
     PatientNavigationPlan,
     PatientProfile,
 )
 from backend.app.services.citation_guard import CitationValidationError, validate_citations
+from backend.app.services.facilities import match_facilities
 from backend.app.services.journey import assess_journey
 from backend.app.services.navigation import build_navigation_plan
 from backend.app.services.retrieval import citation_from_row, retrieve
@@ -177,6 +181,27 @@ def create_evidence_source(source: EvidenceSourceCreate) -> dict[str, str]:
     database.add_source(payload)
     database.log_event("source_registered", source.source_id, {"title": source.title})
     return {"source_id": source.source_id, "status": "registered"}
+
+
+@app.post("/api/v1/admin/facilities", status_code=201, dependencies=[Depends(require_admin)])
+def create_facility(facility: FacilityCreate) -> dict[str, str]:
+    database.add_facility(facility.model_dump(mode="json"))
+    database.log_event(
+        "facility_registered", facility.facility_id, {"name": facility.name, "verified_at": str(facility.verified_at)}
+    )
+    return {"facility_id": facility.facility_id, "status": "registered"}
+
+
+@app.post("/api/v1/facilities/match", response_model=FacilityMatchResponse)
+def find_facilities(request: FacilityMatchRequest) -> FacilityMatchResponse:
+    matches = match_facilities(
+        database.list_verified_facilities(), request.patient, request.desired_services
+    )
+    return FacilityMatchResponse(
+        matches=matches,
+        official_registry_url="https://zgcx.nhc.gov.cn/unit",
+        notice="结果仅依据已核验的机构登记、地点和公开服务标签筛选；未收录不代表不具备相关服务。",
+    )
 
 
 @app.get(

@@ -129,6 +129,36 @@ def test_rejection_keeps_source_out_of_patient_search(tmp_path, monkeypatch) -> 
     assert state["review_status"] == "rejected"
 
 
+def test_admin_facility_registration_and_public_matching(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main, "database", Database(tmp_path / "facilities.db"))
+    client = TestClient(main.app)
+    facility = {
+        "facility_id": "synthetic-facility", "name": "合成测试医疗机构",
+        "province": "山东省", "city": "济南市",
+        "official_registration_url": "https://zgcx.nhc.gov.cn/unit",
+        "cancer_types": ["colon"], "service_tags": ["营养门诊"],
+        "verified_at": "2026-09-01", "verification_note": "合成测试记录，不代表真实机构。",
+    }
+    assert client.post("/api/v1/admin/facilities", json=facility).status_code == 401
+    assert client.post(
+        "/api/v1/admin/facilities", json=facility,
+        headers={"X-Admin-Key": main.settings.admin_api_key},
+    ).status_code == 201
+    response = client.post(
+        "/api/v1/facilities/match",
+        json={
+            "patient": {
+                "patient_id": "facility-patient", "cancer_type": "colon",
+                "province": "山东省", "city": "济南市", "accepts_cross_province_care": False,
+            },
+            "desired_services": ["营养门诊"],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["matches"][0]["facility_id"] == "synthetic-facility"
+    assert response.json()["official_registry_url"] == "https://zgcx.nhc.gov.cn/unit"
+
+
 def test_approved_evidence_answer_contains_locator(tmp_path, monkeypatch) -> None:
     database = Database(tmp_path / "api.db")
     monkeypatch.setattr(main, "database", database)

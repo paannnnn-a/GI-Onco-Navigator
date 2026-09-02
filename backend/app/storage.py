@@ -75,6 +75,20 @@ CREATE TABLE IF NOT EXISTS source_reviews (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_source_reviews_source ON source_reviews(source_id, review_id);
+CREATE TABLE IF NOT EXISTS facilities (
+  facility_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  province TEXT NOT NULL,
+  city TEXT NOT NULL,
+  official_registration_url TEXT NOT NULL,
+  official_website TEXT,
+  cancer_types_json TEXT NOT NULL,
+  service_tags_json TEXT NOT NULL,
+  verification_status TEXT NOT NULL,
+  verified_at TEXT NOT NULL,
+  verification_note TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_facilities_location ON facilities(province, city);
 """
 
 REQUIRED_REVIEW_DIMENSIONS = (
@@ -327,6 +341,46 @@ class Database:
                 params,
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def add_facility(self, facility: dict[str, object]) -> None:
+        values = {
+            **facility,
+            "cancer_types_json": json.dumps(facility.get("cancer_types", []), ensure_ascii=False),
+            "service_tags_json": json.dumps(facility.get("service_tags", []), ensure_ascii=False),
+        }
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO facilities(
+                  facility_id,name,province,city,official_registration_url,official_website,
+                  cancer_types_json,service_tags_json,verification_status,verified_at,verification_note
+                ) VALUES (
+                  :facility_id,:name,:province,:city,:official_registration_url,:official_website,
+                  :cancer_types_json,:service_tags_json,:verification_status,:verified_at,:verification_note
+                ) ON CONFLICT(facility_id) DO UPDATE SET
+                  name=excluded.name, province=excluded.province, city=excluded.city,
+                  official_registration_url=excluded.official_registration_url,
+                  official_website=excluded.official_website,
+                  cancer_types_json=excluded.cancer_types_json,
+                  service_tags_json=excluded.service_tags_json,
+                  verification_status=excluded.verification_status,
+                  verified_at=excluded.verified_at,
+                  verification_note=excluded.verification_note""",
+                values,
+            )
+
+    def list_verified_facilities(self) -> list[dict[str, object]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM facilities WHERE verification_status = 'verified'
+                ORDER BY province, city, name"""
+            ).fetchall()
+        result: list[dict[str, object]] = []
+        for row in rows:
+            item = dict(row)
+            item["cancer_types"] = json.loads(str(item.pop("cancer_types_json")))
+            item["service_tags"] = json.loads(str(item.pop("service_tags_json")))
+            result.append(item)
+        return result
 
 
 def evidence_type_priority(value: str) -> int:
