@@ -1,67 +1,38 @@
 # Database Design
 
+## Overview
 
-## Patient
+GI-Onco Navigator uses structured data models to represent:
 
-
-患者基本信息
-
-
-字段：
-
-|字段|说明|
-|-|-|
-|id|患者编号|
-|age|年龄|
-|gender|性别|
-|location|地区|
+- Patient information
+- Cancer diagnosis
+- Treatment status
+- Medical knowledge
+- Expert video resources
 
 
+---
 
-## Cancer Profile
+# 1. Patient Table
 
+Store basic patient information.
 
-癌症信息
-
-
-字段：
-
-|字段|说明|
-|-|-|
-|cancer_type|癌症类型|
-|subtype|具体类型|
-|stage|分期|
-|TNM|TNM信息|
+| Field | Type | Description |
+|-|-|-|
+| patient_id | String | Unique identifier |
+| age | Integer | Patient age |
+| gender | String | Gender |
+| province | String | Location |
+| cross_province | Boolean | Accept cross-province treatment |
 
 
+Example:
 
-## Treatment Status
-
-
-治疗状态
-
-
-字段：
-
-|字段|说明|
-|-|-|
-|surgery|是否手术|
-|chemotherapy|是否化疗|
-|current_stage|当前阶段|
-
-
-
-## Knowledge Base
-
-
-医学知识
-
-
-字段：
-
-|字段|说明|
-|-|-|
-|title|资料名称|
-|type|指南/视频/文章|
-|source|来源|
-|content|内容|
+```json
+{
+ "patient_id":"P001",
+ "age":65,
+ "gender":"male",
+ "province":"Shandong",
+ "cross_province":false
+}
