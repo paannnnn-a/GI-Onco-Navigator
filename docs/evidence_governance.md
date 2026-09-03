@@ -39,6 +39,8 @@ approved while any page still requires OCR, and a PDF without a recorded audit c
 gate. OCR output must still be checked against the rendered page because successful character
 recognition does not establish table order or medical accuracy.
 
-Web sources must use a public HTTPS URL, retain a content hash and section locator, and remain
-quarantined after ingestion. A trusted publisher does not remove the need for copyright,
+Web sources must use a credential-free public HTTPS URL on the standard port. Every redirect and
+the final response URL are revalidated against private, loopback, and reserved network targets.
+Each source retains a content hash and section locator and remains quarantined after ingestion.
+A trusted publisher does not remove the need for copyright,
 extraction-quality, medical-accuracy, and patient-readability review.

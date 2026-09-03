@@ -6,7 +6,7 @@ import socket
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from backend.app.knowledge import normalize_text
 
@@ -77,16 +77,32 @@ def validate_public_https_url(url: str) -> None:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         raise ValueError("web ingestion requires a credential-free HTTPS URL")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("web ingestion requires a valid HTTPS port") from exc
+    if port not in {None, 443}:
+        raise ValueError("web ingestion permits only the standard HTTPS port")
     for result in socket.getaddrinfo(parsed.hostname, 443, type=socket.SOCK_STREAM):
         address = ipaddress.ip_address(result[4][0])
         if not address.is_global:
             raise ValueError("web ingestion refuses private, loopback, or reserved addresses")
 
 
+class PublicHttpsRedirectHandler(HTTPRedirectHandler):
+    """Reapply the SSRF boundary to every redirect before opening it."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        validate_public_https_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def fetch_public_webpage(url: str) -> bytes:
     validate_public_https_url(url)
     request = Request(url, headers={"User-Agent": "GI-Onco-Navigator/0.1 evidence-ingest"})
-    with urlopen(request, timeout=20) as response:
+    opener = build_opener(PublicHttpsRedirectHandler())
+    with opener.open(request, timeout=20) as response:
+        validate_public_https_url(response.geturl())
         content_type = response.headers.get_content_type()
         if content_type not in {"text/html", "application/xhtml+xml"}:
             raise ValueError(f"unsupported webpage content type: {content_type}")
