@@ -324,6 +324,29 @@ def test_rejection_keeps_source_out_of_patient_search(tmp_path, monkeypatch) -> 
     assert state["review_status"] == "rejected"
 
 
+def test_incomplete_pdf_cannot_pass_extraction_review(tmp_path) -> None:
+    database = Database(tmp_path / "incomplete-pdf.db")
+    database.add_source(
+        {
+            "source_id": "incomplete-pdf", "title": "不完整 PDF", "evidence_type": "guideline",
+            "cancer_types": ["colon"], "intended_audience": "clinician",
+            "copyright_status": "test_only", "local_filename": "scan.pdf",
+            "version": None, "publication_date": None, "license_name": None,
+            "public_url": None, "sha256": None, "supersedes_source_id": None,
+            "metadata": {"extraction_audit": {"pages": 10, "pages_needing_ocr": 2}},
+        }
+    )
+    try:
+        database.review_source(
+            "incomplete-pdf", "extraction_quality", "approved", "Reviewer A",
+            "抽查发现仍有页面未完成识别。",
+        )
+    except ValueError as exc:
+        assert "still need OCR" in str(exc)
+    else:
+        raise AssertionError("incomplete PDF extraction must not be approved")
+
+
 def test_admin_facility_registration_and_public_matching(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(main, "database", Database(tmp_path / "facilities.db"))
     client = TestClient(main.app)

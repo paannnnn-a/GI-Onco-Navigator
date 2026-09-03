@@ -27,11 +27,17 @@ intended audience, page or timestamp, copyright status, supersession status, and
 Newer guidance does not silently overwrite earlier editions. Both remain traceable. Retrieval
 prefers the latest in-scope, reviewed edition and surfaces conflicts or superseded content.
 
-## Review states
+## Review gates
 
-`unreviewed -> machine_extracted -> human_verified -> approved`
+Every source starts in quarantine. Publication requires four independent active approvals:
+copyright, extraction quality, medical accuracy, and patient readability. A rejection blocks the
+source; quarantine, withdrawal, supersession, or content re-ingestion invalidates earlier active
+approvals. Only approved passages may support patient-facing clinical navigation in production.
 
-Only approved passages may support patient-facing clinical navigation in production.
+PDF ingestion records a page-level extraction audit. The extraction-quality gate cannot be
+approved while any page still requires OCR, and a PDF without a recorded audit cannot pass that
+gate. OCR output must still be checked against the rendered page because successful character
+recognition does not establish table order or medical accuracy.
 
 Web sources must use a public HTTPS URL, retain a content hash and section locator, and remain
 quarantined after ingestion. A trusted publisher does not remove the need for copyright,

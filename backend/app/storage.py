@@ -282,6 +282,24 @@ class Database:
             row = connection.execute("SELECT * FROM sources WHERE source_id = ?", (source_id,)).fetchone()
         return dict(row) if row else None
 
+    def reset_source_for_ingestion(self, source_id: str) -> None:
+        """Invalidate prior chunks and reviews before replacing source content."""
+        with self.connect() as connection:
+            chunk_ids = connection.execute(
+                "SELECT chunk_id FROM evidence_chunks WHERE source_id = ?", (source_id,)
+            ).fetchall()
+            connection.executemany(
+                "DELETE FROM evidence_fts WHERE chunk_id = ?",
+                ((row["chunk_id"],) for row in chunk_ids),
+            )
+            connection.execute("DELETE FROM evidence_chunks WHERE source_id = ?", (source_id,))
+            connection.execute(
+                "UPDATE source_reviews SET active = 0 WHERE source_id = ?", (source_id,)
+            )
+            connection.execute(
+                "UPDATE sources SET review_status = 'quarantined' WHERE source_id = ?", (source_id,)
+            )
+
     def review_source(
         self, source_id: str, dimension: str, decision: str, reviewer: str, reason: str
     ) -> dict[str, object]:
@@ -291,10 +309,22 @@ class Database:
             raise ValueError("unsupported review decision")
         with self.connect() as connection:
             source = connection.execute(
-                "SELECT source_id FROM sources WHERE source_id = ?", (source_id,)
+                "SELECT source_id,local_filename,metadata_json FROM sources WHERE source_id = ?",
+                (source_id,),
             ).fetchone()
             if source is None:
                 raise KeyError(source_id)
+            if dimension == "extraction_quality" and decision == "approved":
+                filename = str(source["local_filename"] or "").lower()
+                if filename.endswith(".pdf"):
+                    metadata = json.loads(str(source["metadata_json"] or "{}"))
+                    audit = metadata.get("extraction_audit")
+                    if not isinstance(audit, dict):
+                        raise ValueError("PDF extraction quality requires a recorded page audit")
+                    if int(audit.get("pages_needing_ocr", 0)) > 0:
+                        raise ValueError(
+                            "PDF extraction quality cannot pass while pages still need OCR"
+                        )
             connection.execute(
                 """INSERT INTO source_reviews(source_id,dimension,decision,reviewer,reason)
                 VALUES (?,?,?,?,?)""",

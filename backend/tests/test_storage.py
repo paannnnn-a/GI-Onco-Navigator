@@ -26,3 +26,34 @@ def test_delete_patient_record(tmp_path) -> None:
     assert database.delete_patient("delete-me") is True
     assert database.get_patient("delete-me") is None
     assert database.count_audit_events("delete-me") == 0
+
+
+def test_reingestion_invalidates_prior_chunks_and_reviews(tmp_path) -> None:
+    database = Database(tmp_path / "reingest.db")
+    source = {
+        "source_id": "versioned-source", "title": "测试来源", "evidence_type": "guideline",
+        "version": "1", "publication_date": None, "cancer_types": ["colon"],
+        "intended_audience": "clinician", "copyright_status": "test_only",
+        "license_name": None, "public_url": None, "local_filename": "source.pdf",
+        "sha256": "old", "supersedes_source_id": None,
+        "metadata": {"extraction_audit": {"pages": 1, "pages_needing_ocr": 0}},
+    }
+    database.add_source(source)
+    database.add_chunk(
+        {
+            "chunk_id": "old-chunk", "source_id": "versioned-source", "ordinal": 0,
+            "text": "旧内容", "page_start": 1, "page_end": 1,
+            "timestamp_start_seconds": None, "timestamp_end_seconds": None,
+            "section_path": [], "cancer_types": ["colon"], "tags": [],
+            "extraction_method": "test", "review_status": "quarantined", "content_hash": "old",
+        }
+    )
+    database.review_source(
+        "versioned-source", "copyright", "approved", "Reviewer A", "测试版权审核完成。"
+    )
+
+    database.reset_source_for_ingestion("versioned-source")
+
+    assert database.list_source_chunks("versioned-source")[0] == 0
+    assert database.get_review_state("versioned-source")["latest_reviews"] == []
+    assert database.get_source("versioned-source")["review_status"] == "quarantined"

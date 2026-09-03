@@ -29,9 +29,17 @@ def ingest_pdf(
     database = target_database or Database(get_settings().sqlite_path)
     manifest["local_filename"] = manifest.get("local_filename") or pdf_path.name
     manifest["sha256"] = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
-    database.add_source(manifest)
     pages = extract_pdf_pages(pdf_path, RapidOcrEngine() if use_ocr else None)
     chunks = chunk_pages(pages)
+    unresolved_pages = [page.page_number for page in pages if page.needs_ocr]
+    manifest.setdefault("metadata", {})["extraction_audit"] = {
+        "pages": len(pages),
+        "readable_text_pages": len(pages) - len(unresolved_pages),
+        "pages_needing_ocr": len(unresolved_pages),
+        "page_numbers_needing_ocr": unresolved_pages,
+    }
+    database.add_source(manifest)
+    database.reset_source_for_ingestion(str(manifest["source_id"]))
     for chunk in chunks:
         database.add_chunk(
             {
@@ -55,7 +63,7 @@ def ingest_pdf(
         "source_id": manifest["source_id"],
         "pages": len(pages),
         "chunks": len(chunks),
-        "pages_needing_ocr": [page.page_number for page in pages if page.needs_ocr],
+        "pages_needing_ocr": unresolved_pages,
     }
     database.log_event("pdf_ingested", manifest["source_id"], result)
     return result
@@ -68,9 +76,13 @@ def ingest_docx(
     database = target_database or Database(get_settings().sqlite_path)
     manifest["local_filename"] = manifest.get("local_filename") or docx_path.name
     manifest["sha256"] = hashlib.sha256(docx_path.read_bytes()).hexdigest()
-    database.add_source(manifest)
     blocks = extract_docx_paragraphs(docx_path)
     chunks = chunk_pages(blocks)
+    manifest.setdefault("metadata", {})["extraction_audit"] = {
+        "paragraphs": len(blocks), "readable_blocks": len(blocks), "unresolved_blocks": 0
+    }
+    database.add_source(manifest)
+    database.reset_source_for_ingestion(str(manifest["source_id"]))
     for chunk in chunks:
         database.add_chunk(
             {
@@ -102,9 +114,13 @@ def ingest_transcript(
     database = target_database or Database(get_settings().sqlite_path)
     manifest["local_filename"] = manifest.get("local_filename") or transcript_path.name
     manifest["sha256"] = hashlib.sha256(transcript_path.read_bytes()).hexdigest()
-    database.add_source(manifest)
     cues = extract_transcript_cues(transcript_path)
     chunks = chunk_transcript(cues)
+    manifest.setdefault("metadata", {})["extraction_audit"] = {
+        "verified_cues": len(cues), "readable_blocks": len(chunks), "unresolved_blocks": 0
+    }
+    database.add_source(manifest)
+    database.reset_source_for_ingestion(str(manifest["source_id"]))
     for chunk in chunks:
         database.add_chunk(
             {
@@ -129,8 +145,12 @@ def ingest_web(manifest_path: Path) -> dict[str, object]:
     content = fetch_public_webpage(public_url)
     manifest["sha256"] = hashlib.sha256(content).hexdigest()
     database = Database(get_settings().sqlite_path)
-    database.add_source(manifest)
     chunks = extract_web_chunks(content)
+    manifest.setdefault("metadata", {})["extraction_audit"] = {
+        "readable_blocks": len(chunks), "unresolved_blocks": 0
+    }
+    database.add_source(manifest)
+    database.reset_source_for_ingestion(str(manifest["source_id"]))
     for chunk in chunks:
         database.add_chunk(
             {
