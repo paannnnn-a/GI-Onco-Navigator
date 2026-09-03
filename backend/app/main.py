@@ -62,7 +62,7 @@ metrics = Metrics()
 logger = logging.getLogger("gi_onco.access")
 app = FastAPI(
     title="GI-Onco Navigator API",
-    version="0.1.0",
+    version="1.0.0",
     description="Evidence-grounded postoperative information navigation. Not medical advice.",
 )
 app.add_middleware(

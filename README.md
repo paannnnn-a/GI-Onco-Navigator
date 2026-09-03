@@ -4,6 +4,8 @@ An open-source, evidence-grounded postoperative navigation platform for people a
 
 GI-Onco Navigator connects a structured patient profile, a postoperative journey model, governed medical sources, traceable retrieval, and safety controls in one deployable web application. It helps patients understand their current phase, identify missing information, prepare questions for clinical visits, and locate relevant evidence. It does not diagnose, prescribe, rank clinicians, or replace the treating team.
 
+Version 1.0.0 is the first stable community engineering release. “Stable” describes the documented software interfaces and tested deployment package; it is not a claim of clinical validation or authorization for unsupervised real-patient use.
+
 ## Capabilities
 
 - Postoperative profiles for colon, rectal, and gastric cancer
@@ -120,4 +122,4 @@ See [System design](docs/project_design.md), [Database design](docs/database_des
 
 Contributions of code, openly licensed metadata, parsers, and synthetic test cases are welcome. Medical content must include source, version, copyright status, and accountable review; an ordinary code merge cannot publish it to patients.
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Project code is licensed under Apache-2.0. Third-party medical sources retain their original terms and are not relicensed by this repository.
+Read [CHANGELOG.md](CHANGELOG.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Project code is licensed under Apache-2.0. Third-party medical sources retain their original terms and are not relicensed by this repository.
