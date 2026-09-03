@@ -16,6 +16,8 @@ def test_corrupt_text_detection() -> None:
     assert looks_corrupted("")
     assert looks_corrupted("δ൭Ҩ" * 30)
     assert looks_corrupted("໇ᆀ൭ҨழႶૌ౦" * 20)
+    assert not looks_corrupted("3 Principles of colon cancer treatment")
+    assert not looks_corrupted("3 结肠癌的治疗原则")
     assert not looks_corrupted("这是一段用于患者教育的正常中文文本。" * 10)
     assert not looks_corrupted("HER2、PD-L1、MSI-H/dMMR 与 β-catenin 是常见医学写法。" * 5)
 

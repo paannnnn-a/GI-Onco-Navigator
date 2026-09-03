@@ -8,9 +8,9 @@ from backend.app.schemas import (
 )
 
 REQUIRED_PATHOLOGY_FIELDS = (
-    ("pathological_stage", "病理分期", "用于定位术后风险评估和随访讨论范围"),
-    ("margin_status", "切缘状态", "用于确认手术病理信息是否完整"),
-    ("mismatch_repair_status", "MMR/MSI 状态", "可能影响后续风险评估和讨论内容"),
+    ("pathological_stage", "Pathological stage", "Helps define the scope of postoperative risk and follow-up discussions"),
+    ("margin_status", "Margin status", "Helps confirm whether the surgical pathology record is complete"),
+    ("mismatch_repair_status", "MMR/MSI status", "May affect subsequent risk assessment and discussion topics"),
 )
 
 
@@ -28,29 +28,29 @@ def assess_journey(profile: PatientProfile, today: date | None = None) -> Journe
 
     if profile.current_treatment:
         status = TreatmentStatus.ACTIVE_TREATMENT
-        explanation = "档案显示目前正在接受后续治疗，应围绕治疗期间监测和复诊问题导航。"
+        explanation = "The profile records active postoperative treatment, so navigation should focus on monitoring and follow-up questions during treatment."
     elif days_since_surgery is None:
         status = TreatmentStatus.UNKNOWN
-        explanation = "尚未记录手术日期，系统无法可靠判断当前术后阶段。"
+        explanation = "No surgery date is recorded, so the current postoperative stage cannot be assessed reliably."
     elif days_since_surgery < 0:
         status = TreatmentStatus.UNKNOWN
-        explanation = "手术日期晚于当前日期，请核对档案。"
+        explanation = "The surgery date is in the future. Check the patient profile."
     elif days_since_surgery <= 14:
         status = TreatmentStatus.POSTOPERATIVE_RECOVERY
-        explanation = "当前处于早期术后恢复窗口，导航重点是恢复情况和病理资料准备。"
+        explanation = "The patient is in the early postoperative recovery window; navigation focuses on recovery and pathology-record preparation."
     elif missing:
         status = TreatmentStatus.PATHOLOGY_REVIEW
-        explanation = "已进入术后病理信息整理阶段，但关键资料仍不完整。"
+        explanation = "The patient has entered postoperative pathology review, but essential information is still incomplete."
     elif days_since_surgery <= 56:
         status = TreatmentStatus.ADJUVANT_EVALUATION
-        explanation = "档案信息提示处于术后进一步治疗评估窗口，应与诊疗团队核对完整病理和检查资料。"
+        explanation = "The profile indicates a postoperative evaluation window. Complete pathology and test records should be reviewed with the care team."
     else:
         status = TreatmentStatus.SURVEILLANCE
-        explanation = "距离手术已有一段时间，系统将优先检索与当前治疗记录和随访阶段相关的信息。"
+        explanation = "More time has elapsed since surgery, so the system prioritizes information relevant to the recorded treatment and surveillance stage."
 
-    topics = ["确认病理报告和手术记录是否完整", "向主管医生核对当前阶段和复诊计划"]
+    topics = ["Confirm that the pathology report and operative note are complete", "Confirm the current stage and follow-up plan with the responsible clinician"]
     if missing:
-        topics.append("补充系统标出的关键病理或分子检测信息")
+        topics.append("Add the essential pathology or molecular-test information flagged by the system")
 
     return JourneyAssessment(
         current_status=status,

@@ -24,7 +24,7 @@ def test_facility_filter_respects_no_cross_province_preference() -> None:
         patient, ["胃肠肿瘤多学科门诊"], today=date(2026, 9, 2),
     )
     assert [item.facility_id for item in rows] == ["local"]
-    assert "医院排名" in rows[0].disclaimer
+    assert "hospital ranking" in rows[0].disclaimer
 
 
 def test_facility_match_discloses_unmatched_services() -> None:

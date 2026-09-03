@@ -45,12 +45,12 @@ def classify_question(question: str, symptoms: Iterable[str] = ()) -> SafetyDeci
         return SafetyDecision(
             allowed=False,
             category="possible_emergency",
-            message="你描述的情况可能需要立即医疗评估。请联系当地急救服务或尽快前往急诊，不要等待在线回答。",
+            message="The situation you described may require immediate medical assessment. Contact local emergency services or go to an emergency department promptly; do not wait for an online answer.",
         )
     if any(pattern in normalized for pattern in PRESCRIPTIVE_PATTERNS):
         return SafetyDecision(
             allowed=False,
             category="individual_treatment_instruction",
-            message="系统不能替代医生为具体患者选择药物、方案或剂量，但可以帮助整理需要与医生讨论的问题和相关循证资料。",
+            message="The system cannot replace a clinician in selecting a medicine, regimen, or dose for an individual patient. It can help organize questions and relevant evidence for discussion with the care team.",
         )
     return SafetyDecision(allowed=True, category="education_navigation")

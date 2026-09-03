@@ -7,38 +7,38 @@ def build_navigation_plan(profile: PatientProfile) -> PatientNavigationPlan:
     topics = [
         NavigationTopic(
             category="records",
-            title="病理与手术资料",
-            purpose="确认用于后续讨论的基础资料是否完整。",
+            title="Pathology and surgical records",
+            purpose="Confirm that the core records needed for follow-up discussions are complete.",
             suggested_questions=[
-                "我的病理报告、手术记录和出院记录是否已经齐全？",
-                "报告中哪些字段会影响后续讨论，需要补充检测吗？",
+                "Are my pathology report, operative note, and discharge summary complete?",
+                "Which report fields may affect the next discussion, and is additional testing needed?",
             ],
         ),
         NavigationTopic(
             category="facility_navigation",
-            title="就医机构信息",
-            purpose="按地点偏好和经核验的公开服务标签筛选机构，并通过官方登记入口再次核实。",
+            title="Facility information",
+            purpose="Filter facilities by location preferences and verified public service tags, then confirm the result through official registries.",
             suggested_questions=[
-                "哪些机构的公开服务范围与我需要讨论的问题相关？",
-                "跨省就医前需要向医保和目标机构确认哪些事项？",
+                "Which facilities publicly list services relevant to the issue I need to discuss?",
+                "What should I confirm with my insurer and the destination facility before traveling for care?",
             ],
         ),
         NavigationTopic(
             category="follow_up",
-            title="复诊与随访准备",
-            purpose="将时间安排和需要携带的资料整理成清单。",
+            title="Follow-up preparation",
+            purpose="Organize timing and required records into a practical checklist.",
             suggested_questions=[
-                "下一次复诊应在什么时候，需要携带哪些资料？",
-                "出现哪些变化时应提前联系诊疗团队？",
+                "When should my next visit occur, and which records should I bring?",
+                "Which changes should prompt me to contact the care team earlier?",
             ],
         ),
         NavigationTopic(
             category="nutrition_activity",
-            title="营养与活动",
-            purpose="根据手术类型、症状和治疗阶段查找经过审核的患者教育材料。",
+            title="Nutrition and activity",
+            purpose="Find reviewed patient-education material relevant to the surgery, symptoms, and treatment stage.",
             suggested_questions=[
-                "结合我的手术和当前症状，饮食与活动有哪些需要个体化确认的地方？",
-                "是否需要营养科或康复专业人员评估？",
+                "Which nutrition and activity questions need individual review given my surgery and current symptoms?",
+                "Would an assessment by a dietitian or rehabilitation professional be appropriate?",
             ],
         ),
     ]
@@ -47,13 +47,13 @@ def build_navigation_plan(profile: PatientProfile) -> PatientNavigationPlan:
             0,
             NavigationTopic(
                 category="symptoms",
-                title="症状记录",
-                purpose="把症状出现时间、频率和变化整理后交给诊疗团队评估。",
-                suggested_questions=["这些症状是否需要提前就诊，应该记录哪些变化？"],
+                title="Symptom log",
+                purpose="Organize symptom onset, frequency, and changes for assessment by the care team.",
+                suggested_questions=["Do these symptoms require an earlier visit, and which changes should I record?"],
             ),
         )
     return PatientNavigationPlan(
         assessment=assessment,
         topics=topics,
-        safety_notice="本计划用于整理信息和就诊问题，不提供个体化诊断、处方或治疗决定。",
+        safety_notice="This plan organizes information and questions for clinical visits. It does not provide an individual diagnosis, prescription, or treatment decision.",
     )

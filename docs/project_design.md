@@ -1,88 +1,78 @@
-# GI-Onco Navigator 系统设计
+# GI-Onco Navigator system design
 
-## 1. 产品边界
+## Product boundary
 
-本项目是胃肠肿瘤术后患者的循证信息导航平台。系统把患者档案、疾病路径和经过治理的知识来源连接起来，输出可追溯的患者教育信息与就诊讨论清单。
+GI-Onco Navigator is an evidence-grounded information and visit-preparation platform for patients after gastrointestinal cancer surgery. It connects a patient profile and journey phase to governed sources and returns traceable patient education and discussion prompts.
 
-系统不会诊断疾病，不会替患者选择药物、方案、剂量、医院或医生，也不会把患者社群经验包装成指南结论。
+It does not diagnose disease, select a drug, regimen, dose, hospital, or clinician, and does not present community experience as clinical guidance.
 
-## 2. 核心流程
-
-```text
-患者档案
-  → 字段完整性校验
-  → 术后旅程状态机
-  → 危险症状/处方请求安全分类
-  → 按癌种与阶段限定检索范围
-  → 只检索已审核证据
-  → 证据分层与排序
-  → 引用页码/视频时间戳校验
-  → 患者友好回答与讨论清单
-  → 审计记录
-```
-
-若任一患者端医学结论没有合格引用，回答必须失败关闭（fail closed），而不是由大模型自由补全。
-
-## 3. 组成部分
-
-### 患者端
-
-React + TypeScript 响应式 Web 应用，提供癌种选择、术后档案、阶段判断、安全说明、资料来源和后续导航入口。
-
-### 应用接口
-
-FastAPI 提供患者档案、阶段评估、导航计划、循证问答、资料来源与管理接口。开发版使用 SQLite/FTS5，接口与数据层保持可替换，以便生产环境迁移 PostgreSQL 与专用检索服务。
-
-### 患者旅程
-
-状态包括：早期术后恢复、病理资料整理、后续治疗评估、治疗中、随访、康复和未知。状态机只用于组织内容，不代表临床判断。
-
-### 知识与检索
-
-来源带有版本、日期、癌种、受众、版权、审核状态、替代关系与哈希。切片保留页码或时间戳、章节路径、提取方法和内容哈希。检索同时使用 SQLite FTS5 关键词召回和中文概念/字词特征相似度召回，再以倒数排名融合（RRF）合并结果，并以证据类型优先级重排。该本地实现不依赖外部大模型；后续可替换为经验证的医学嵌入模型，但不能绕过审核状态与引用门禁。
-
-### 安全层
-
-- 紧急症状触发及时医疗评估提示并停止普通问答。
-- 具体药物、方案、剂量或停药请求不进入生成环节。
-- 患者端只读取 `approved` 切片。
-- 管理写入接口使用独立密钥。
-- 所有关键操作写入审计事件。
-
-## 4. 数据管道
+## Core flow
 
 ```text
-合法取得的本地文件
-  → SHA-256 与来源登记
-  → 文本提取 / OCR 需求识别
-  → 分页或分段切片
-  → 隔离区
-  → 版权检查
-  → 医学内容审核
-  → 患者可读性审核
-  → approved 索引
+Patient profile
+  -> field and consistency validation
+  -> postoperative journey state machine
+  -> emergency and prescriptive-request safety routing
+  -> cancer- and phase-aware retrieval scope
+  -> approved evidence only
+  -> evidence hierarchy and reranking
+  -> page, timestamp, or section citation validation
+  -> patient-readable evidence and visit questions
+  -> privacy-conscious audit event
 ```
 
-扫描版 PDF 必须完成 OCR 和逐页质量抽查。DOCX 段落使用段落序号定位；对于版权受限或来源不足的内容，只保留元数据与线索，不公开原文。
+If a patient-facing medical statement cannot be supported by an eligible citation, the application fails closed rather than allowing a model to complete it from general knowledge.
 
-## 5. 医疗资料审核状态
+## Components
 
-- `unreviewed`：已导入，未审核。
-- `quarantined_pending_medical_review`：存在高风险主张或出处不足，隔离。
-- `approved`：版权、提取质量、医学内容与受众表达均完成审核。
-- `rejected`：不适合使用。
-- `outdated`：有更新版本替代，不再参与默认检索。
+### Patient application
 
-审核权限必须与普通代码贡献权限分离。生产系统应记录审核人、审核时间、适用范围和撤销原因。
+A responsive React and TypeScript web application provides cancer selection, a structured postoperative profile, journey assessment, safety explanations, evidence provenance, reminders, and navigation topics.
 
-## 6. 部署
+### Application API
 
-Docker Compose 启动 API、静态患者端与持久化数据卷。Nginx 负责前端路由和 `/api` 反向代理。CI 对后端执行 Ruff、pytest 和覆盖率检查，对前端执行锁定依赖安装与生产构建。
+FastAPI exposes profile, journey, navigation, evidence, facility, and administrative endpoints. The community build uses SQLite and FTS5. Interfaces are separated so a production operator can migrate storage and retrieval without bypassing review or citation controls.
 
-服务为每个请求返回 `X-Request-ID`，访问日志只记录请求方法、路由、状态、时长与请求 ID；患者提问在审计记录中只保存 SHA-256 摘要和长度，不保存原文。`/health/live`、`/health/ready` 与 `/metrics` 分别提供存活、数据库就绪和 Prometheus 基础指标。CI 同时构建 API 与 Web 容器。
+### Patient journey
 
-生产部署还需要由部署方配置 HTTPS、外部密钥托管、组织级强身份认证、最小权限、加密备份恢复、集中日志、漏洞扫描、隐私影响评估和适用地区的医疗/数据合规审查；仓库不会声称仅靠默认 Docker Compose 即已满足具体地区法规。
+States include early recovery, pathology preparation, adjuvant-treatment evaluation, active treatment, surveillance, rehabilitation, and unknown. The state machine organizes information; it is not a clinical diagnosis or treatment decision.
 
-## 7. 评测
+### Knowledge and retrieval
 
-AI Benchmark 使用完全虚构病例，分别衡量旅程状态、安全分类、检索 Recall@K、引用有效性、拒答准确性与危险建议率。每个病例固定参考日期，避免随日历时间漂移。临床内容评测集在公开前需要独立专家审核，且不能包含真实患者身份信息。
+Sources retain version, date, cancer scope, audience, copyright state, review state, supersession, and checksum. Chunks retain a page, timestamp, or section locator, extraction method, and content hash. Retrieval combines SQLite FTS5 keyword recall with local Chinese concept and character features, fuses rankings with reciprocal rank fusion, and applies evidence-type priority. A validated medical embedding service may replace the local similarity layer, but cannot bypass approval and citation gates.
+
+### Safety layer
+
+- Potential emergency symptoms stop ordinary question answering.
+- Requests for patient-specific treatment, dosing, or discontinuation do not enter generation.
+- Patient endpoints retrieve only `approved` sources and chunks.
+- Administrative writes require a separate secret.
+- Material actions produce audit events without storing question text.
+
+## Evidence pipeline
+
+```text
+Lawfully obtained local or public source
+  -> source registration and SHA-256
+  -> safe extraction and page-level quality audit
+  -> optional local OCR
+  -> locatable chunks
+  -> quarantine
+  -> copyright review
+  -> extraction-quality review
+  -> medical-accuracy review
+  -> patient-readability review
+  -> approved index
+```
+
+Scanned PDFs require OCR and page-level verification. Re-ingestion invalidates previous chunks and approvals. Restricted or weakly sourced content retains only permitted metadata and discovery leads in the public repository.
+
+## Deployment boundary
+
+Docker Compose starts the API, static web application, and persistent data volume. Nginx handles client routing and `/api` proxying. CI runs linting, backend and frontend tests, the benchmark, production builds, and container builds.
+
+The application emits request IDs, privacy-conscious access logs, liveness, readiness, and Prometheus metrics. A production operator must additionally provide HTTPS, managed secrets, strong organizational identity, least privilege, encrypted backup and restoration, centralized logs, vulnerability management, privacy impact assessment, and applicable medical and data compliance review.
+
+## Evaluation
+
+The benchmark uses synthetic patients only. It measures journey-state classification, safety routing, retrieval Recall@K, citation validity, refusal accuracy, and dangerous-advice rate. Clinical validation and public release of a medical evaluation set require independent expert review.

@@ -44,33 +44,33 @@ type PatientAccess = { patient_id: string; access_token: string; expires_at: str
 type PatientReminder = { reminder_id: string; title: string; due_at: string; source_note: string; status: string };
 
 const pathways: Record<CancerType, { title: string; subtitle: string }> = {
-  colon: { title: "结肠癌术后导航", subtitle: "整理病理信息、定位阶段并准备复诊问题" },
-  rectal: { title: "直肠癌术后导航", subtitle: "关注病理、后续治疗评估与功能恢复" },
-  gastric: { title: "胃癌术后导航", subtitle: "匹配术后阶段、营养与随访教育资料" },
+  colon: { title: "Colon cancer navigation", subtitle: "Organize pathology, understand your phase, and prepare visit questions" },
+  rectal: { title: "Rectal cancer navigation", subtitle: "Focus on pathology, treatment evaluation, and functional recovery" },
+  gastric: { title: "Gastric cancer navigation", subtitle: "Connect your postoperative phase with nutrition and follow-up education" },
 };
 
 const statusNames: Record<string, string> = {
-  postoperative_recovery: "早期术后恢复",
-  pathology_review: "病理资料整理",
-  adjuvant_evaluation: "后续治疗评估",
-  active_treatment: "治疗进行中",
-  surveillance: "随访阶段",
-  rehabilitation: "康复阶段",
-  unknown: "信息不足，暂无法判断",
+  postoperative_recovery: "Early postoperative recovery",
+  pathology_review: "Pathology information preparation",
+  adjuvant_evaluation: "Postoperative treatment evaluation",
+  active_treatment: "Active treatment",
+  surveillance: "Surveillance",
+  rehabilitation: "Rehabilitation",
+  unknown: "Not enough information to determine a phase",
 };
 
 const evidenceNames: Record<string, string> = {
-  guideline: "临床指南", peer_reviewed: "同行评议研究", patient_education: "患者教育",
-  expert_video: "专家视频", other: "其他资料",
+  guideline: "Clinical guideline", peer_reviewed: "Peer-reviewed research", patient_education: "Patient education",
+  expert_video: "Expert video", other: "Other material",
 };
 
 export function citationLocator(citation: Answer["citations"][number]): string {
   if (citation.page_start) {
-    return `第 ${citation.page_start}${citation.page_end && citation.page_end !== citation.page_start ? `–${citation.page_end}` : ""} 页`;
+    return `Page ${citation.page_start}${citation.page_end && citation.page_end !== citation.page_start ? `–${citation.page_end}` : ""}`;
   }
-  if (citation.timestamp_start_seconds !== undefined) return `视频 ${citation.timestamp_start_seconds} 秒处`;
+  if (citation.timestamp_start_seconds !== undefined) return `Video at ${citation.timestamp_start_seconds} seconds`;
   if (citation.section_path.length) return citation.section_path.join(" / ");
-  return "定位信息不可用";
+  return "Locator unavailable";
 }
 
 async function postJson<T>(url: string, body: object): Promise<T> {
@@ -81,8 +81,8 @@ async function postJson<T>(url: string, body: object): Promise<T> {
   });
   const data = await response.json();
   if (!response.ok) {
-    const message = data?.detail?.message ?? data?.detail ?? "服务暂时不可用";
-    throw new Error(typeof message === "string" ? message : "请求未完成");
+    const message = data?.detail?.message ?? data?.detail ?? "The service is temporarily unavailable.";
+    throw new Error(typeof message === "string" ? message : "The request could not be completed.");
   }
   return data as T;
 }
@@ -129,7 +129,7 @@ export function App() {
         ]);
         if ([401, 403].includes(recordResponse.status) || [401, 403].includes(reminderResponse.status)) {
           sessionStorage.removeItem("gi-onco-patient-access"); setPatientAccess(null);
-          setRecordStatus("访问凭证已过期，请在需要时重新保存档案。"); return;
+          setRecordStatus("The access token expired. Save the profile again when needed."); return;
         }
         if (recordResponse.ok) {
           const record = await recordResponse.json() as Profile;
@@ -139,10 +139,10 @@ export function App() {
           setSymptoms(record.symptoms.join("、")); setProvince(record.province ?? "");
           setCity(record.city ?? ""); setCrossProvince(Boolean(record.accepts_cross_province_care));
           setSaveConsent(Boolean(record.consent_to_store)); setShowProfile(true);
-          setRecordStatus("已从服务器恢复本次会话保存的档案。");
+          setRecordStatus("The profile saved in this browser session was restored from the server.");
         }
         if (reminderResponse.ok) setReminders(await reminderResponse.json() as PatientReminder[]);
-      } catch { setRecordStatus("暂时无法恢复已保存档案；本地访问凭证仍保留。"); }
+      } catch { setRecordStatus("The saved profile could not be restored; the local access token remains available."); }
     }
     void restoreSession();
   }, [patientAccess]);
@@ -170,7 +170,7 @@ export function App() {
     try {
       setPlan(await postJson<Plan>("/api/v1/navigation/plan", profile()));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "请求失败");
+      setError(caught instanceof Error ? caught.message : "Request failed.");
     } finally {
       setLoading(false);
     }
@@ -184,7 +184,7 @@ export function App() {
     try {
       setAnswer(await postJson<Answer>("/api/v1/navigation/question", { question, patient: profile() }));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "请求失败");
+      setError(caught instanceof Error ? caught.message : "Request failed.");
     } finally {
       setLoading(false);
     }
@@ -197,12 +197,12 @@ export function App() {
         patient: profile(),
         desired_services: desiredServices.split(/[，,、]/).map((value) => value.trim()).filter(Boolean),
       }));
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "查询失败"); }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Search failed."); }
     finally { setLoading(false); }
   }
 
   async function saveRecord() {
-    if (!saveConsent) { setError("请先勾选明确同意保存本次结构化档案。"); return; }
+    if (!saveConsent) { setError("Provide explicit consent before saving this structured profile."); return; }
     setLoading(true); setError(""); setRecordStatus("");
     try {
       let access = patientAccess;
@@ -217,9 +217,9 @@ export function App() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${access.access_token}` },
         body: JSON.stringify(record),
       });
-      if (!response.ok) throw new Error("档案保存失败，请稍后重试。");
-      setRecordStatus("档案已保存；访问凭证仅保留在当前浏览器会话中。你可以随时删除。 ");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "保存失败"); }
+      if (!response.ok) throw new Error("The profile could not be saved. Try again later.");
+      setRecordStatus("Profile saved. The access token remains only in this browser session, and you can delete the profile at any time.");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Save failed."); }
     finally { setLoading(false); }
   }
 
@@ -230,10 +230,10 @@ export function App() {
       const response = await fetch(`/api/v1/patients/${patientAccess.patient_id}`, {
         method: "DELETE", headers: { "Authorization": `Bearer ${patientAccess.access_token}` },
       });
-      if (!response.ok) throw new Error("档案删除失败，请稍后重试。");
+      if (!response.ok) throw new Error("The profile could not be deleted. Try again later.");
       sessionStorage.removeItem("gi-onco-patient-access"); setPatientAccess(null);
-      setSaveConsent(false); setRecordStatus("服务器中的结构化档案已删除。");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "删除失败"); }
+      setSaveConsent(false); setRecordStatus("The structured profile was deleted from the server.");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Delete failed."); }
     finally { setLoading(false); }
   }
 
@@ -244,14 +244,14 @@ export function App() {
       const response = await fetch(`/api/v1/patients/${patientAccess.patient_id}/export`, {
         headers: { "Authorization": `Bearer ${patientAccess.access_token}` },
       });
-      if (!response.ok) throw new Error("档案导出失败，请确认访问凭证仍然有效。");
+      if (!response.ok) throw new Error("Profile export failed. Confirm that the access token is still valid.");
       const blob = new Blob([await response.text()], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url; link.download = `gi-onco-record-${patientAccess.patient_id}.json`;
       document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
-      setRecordStatus("档案和复诊事项已导出；文件不包含访问凭证。");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "导出失败"); }
+      setRecordStatus("Profile and reminders exported. The file does not contain the access token.");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Export failed."); }
     finally { setLoading(false); }
   }
 
@@ -264,11 +264,11 @@ export function App() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${patientAccess.access_token}` },
         body: JSON.stringify({ title: reminderTitle, due_at: new Date(reminderDate).toISOString(), source_note: reminderSource }),
       });
-      if (!response.ok) throw new Error("复诊事项保存失败，请确认档案已保存。");
+      if (!response.ok) throw new Error("The reminder could not be saved. Confirm that the profile has been saved.");
       const reminder = await response.json() as PatientReminder;
       setReminders((items) => [...items, reminder].sort((a, b) => a.due_at.localeCompare(b.due_at)));
       setReminderTitle(""); setReminderDate(""); setReminderSource("");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "保存失败"); }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Save failed."); }
     finally { setLoading(false); }
   }
 
@@ -285,80 +285,80 @@ export function App() {
   return (
     <main>
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="GI-Onco Navigator 首页">
+        <a className="brand" href="#top" aria-label="GI-Onco Navigator home">
           <span className="brand-mark"><HeartPulse size={21} /></span><span>GI-Onco Navigator</span>
         </a>
-        <nav aria-label="主导航"><a href="#journey">我的阶段</a><a href="#evidence">循证提问</a><a href="#safety">安全说明</a></nav>
+        <nav aria-label="Main navigation"><a href="#journey">My journey</a><a href="#evidence">Evidence search</a><a href="#safety">Safety</a></nav>
       </header>
 
       <section id="top" className="hero">
-        <div className="eyebrow">胃肠肿瘤术后循证导航</div>
-        <h1>把复杂资料，整理成<br /><em>下一步能讨论的问题</em></h1>
-        <p className="hero-copy">根据你的术后档案，从经过审核的指南、患者教育材料和专家内容中查找相关信息，清楚展示来源、适用范围和仍需确认的事项。</p>
-        <div className="notice"><ShieldCheck size={18} /> 本平台提供信息导航，不诊断、不处方、不替代医生。</div>
+        <div className="eyebrow">Evidence-grounded gastrointestinal cancer navigation</div>
+        <h1>Turn complex information into<br /><em>questions you can discuss next</em></h1>
+        <p className="hero-copy">Use your postoperative profile to find relevant information in reviewed guidance, patient education, and expert material, with clear provenance, scope, and remaining uncertainties.</p>
+        <div className="notice"><ShieldCheck size={18} /> Information navigation only. No diagnosis, prescription, or replacement for your clinical team.</div>
       </section>
 
       <section id="journey" className="workspace">
-        <div className="section-heading"><span>01</span><div><h2>从你的情况开始</h2><p>先选择癌种，再完善用于导航的术后信息。</p></div></div>
-        <div className="cancer-grid" role="radiogroup" aria-label="选择癌种">
+        <div className="section-heading"><span>01</span><div><h2>Start with your situation</h2><p>Select a cancer type, then add the postoperative details used for navigation.</p></div></div>
+        <div className="cancer-grid" role="radiogroup" aria-label="Select cancer type">
           {(Object.keys(pathways) as CancerType[]).map((key, index) => (
             <button key={key} className={cancerType === key ? "cancer-card active" : "cancer-card"} onClick={() => setCancerType(key)} role="radio" aria-checked={cancerType === key}>
               <span className="card-index">0{index + 1}</span><strong>{pathways[key].title}</strong><small>{pathways[key].subtitle}</small><ArrowRight size={20} />
             </button>
           ))}
         </div>
-        <div className="selected-path"><div><span>已选择</span><strong>{selected.title}</strong></div><button onClick={() => setShowProfile(true)}>建立我的术后档案 <ArrowRight size={18} /></button></div>
+        <div className="selected-path"><div><span>Selected</span><strong>{selected.title}</strong></div><button onClick={() => setShowProfile(true)}>Build my postoperative profile <ArrowRight size={18} /></button></div>
 
         {showProfile && (
           <div className="profile-panel full">
-            <div><label htmlFor="surgery-date">手术日期</label><input id="surgery-date" type="date" value={surgeryDate} onChange={(event) => setSurgeryDate(event.target.value)} /></div>
-            <div><label htmlFor="stage">病理分期</label><input id="stage" value={stage} onChange={(event) => setStage(event.target.value)} placeholder="例如 III 期；不清楚可留空" /></div>
-            <div><label htmlFor="margin">切缘状态</label><input id="margin" value={margin} onChange={(event) => setMargin(event.target.value)} placeholder="例如 R0；以病理报告为准" /></div>
-            <div><label htmlFor="mmr">MMR / MSI 状态</label><input id="mmr" value={mmr} onChange={(event) => setMmr(event.target.value)} placeholder="例如 pMMR；不清楚可留空" /></div>
-            <div><label htmlFor="treatment">当前治疗记录</label><input id="treatment" value={treatment} onChange={(event) => setTreatment(event.target.value)} placeholder="只记录医生已确定的治疗" /></div>
-            <div><label htmlFor="symptoms">当前症状</label><input id="symptoms" value={symptoms} onChange={(event) => setSymptoms(event.target.value)} placeholder="多个症状用逗号分隔" /></div>
-            <div><label htmlFor="province">所在省份</label><input id="province" value={province} onChange={(event) => setProvince(event.target.value)} placeholder="例如 山东省" /></div>
-            <div><label htmlFor="city">所在城市</label><input id="city" value={city} onChange={(event) => setCity(event.target.value)} placeholder="例如 济南市" /></div>
-            <label className="check-field"><input type="checkbox" checked={crossProvince} onChange={(event) => setCrossProvince(event.target.checked)} />愿意查看跨省机构信息</label>
-            <label className="check-field consent"><input type="checkbox" checked={saveConsent} onChange={(event) => setSaveConsent(event.target.checked)} />我明确同意将以上结构化信息保存到当前部署的服务器；不包含姓名、证件号或手机号。</label>
-            <button className="primary" onClick={createPlan} disabled={loading}>{loading ? "正在整理…" : "生成导航计划"}</button>
-            <button className="secondary" onClick={saveRecord} disabled={loading || !saveConsent}>保存我的档案</button>
-            {patientAccess && <button className="secondary" onClick={exportRecord} disabled={loading}>导出我的数据</button>}
-            {patientAccess && <button className="danger-link" onClick={deleteRecord} disabled={loading}>删除服务器档案</button>}
+            <div><label htmlFor="surgery-date">Surgery date</label><input id="surgery-date" type="date" value={surgeryDate} onChange={(event) => setSurgeryDate(event.target.value)} /></div>
+            <div><label htmlFor="stage">Pathological stage</label><input id="stage" value={stage} onChange={(event) => setStage(event.target.value)} placeholder="Example: stage III; leave blank if unknown" /></div>
+            <div><label htmlFor="margin">Margin status</label><input id="margin" value={margin} onChange={(event) => setMargin(event.target.value)} placeholder="Example: R0; use the pathology report" /></div>
+            <div><label htmlFor="mmr">MMR / MSI status</label><input id="mmr" value={mmr} onChange={(event) => setMmr(event.target.value)} placeholder="Example: pMMR; leave blank if unknown" /></div>
+            <div><label htmlFor="treatment">Current treatment record</label><input id="treatment" value={treatment} onChange={(event) => setTreatment(event.target.value)} placeholder="Record only treatment confirmed by your clinical team" /></div>
+            <div><label htmlFor="symptoms">Current symptoms</label><input id="symptoms" value={symptoms} onChange={(event) => setSymptoms(event.target.value)} placeholder="Separate multiple symptoms with commas" /></div>
+            <div><label htmlFor="province">State or province</label><input id="province" value={province} onChange={(event) => setProvince(event.target.value)} placeholder="Example: Shandong" /></div>
+            <div><label htmlFor="city">City</label><input id="city" value={city} onChange={(event) => setCity(event.target.value)} placeholder="Example: Jinan" /></div>
+            <label className="check-field"><input type="checkbox" checked={crossProvince} onChange={(event) => setCrossProvince(event.target.checked)} />Show facilities outside my state or province</label>
+            <label className="check-field consent"><input type="checkbox" checked={saveConsent} onChange={(event) => setSaveConsent(event.target.checked)} />I explicitly consent to storing this structured profile on the current deployment. Do not include names, government IDs, or phone numbers.</label>
+            <button className="primary" onClick={createPlan} disabled={loading}>{loading ? "Preparing…" : "Create navigation plan"}</button>
+            <button className="secondary" onClick={saveRecord} disabled={loading || !saveConsent}>Save my profile</button>
+            {patientAccess && <button className="secondary" onClick={exportRecord} disabled={loading}>Export my data</button>}
+            {patientAccess && <button className="danger-link" onClick={deleteRecord} disabled={loading}>Delete server profile</button>}
             {recordStatus && <div className="record-status" role="status">{recordStatus}</div>}
-            {patientAccess && <section className="reminder-editor"><h3>按诊疗团队安排记录复诊事项</h3><p>平台不会自行计算医学随访时间；请只录入预约通知或诊疗团队已经确认的日期。</p><input value={reminderTitle} onChange={(event) => setReminderTitle(event.target.value)} placeholder="事项，例如复诊或检查" /><input type="datetime-local" value={reminderDate} onChange={(event) => setReminderDate(event.target.value)} /><input value={reminderSource} onChange={(event) => setReminderSource(event.target.value)} placeholder="日期来源，例如门诊预约通知" /><button className="secondary" onClick={addReminder} disabled={loading || !reminderTitle || !reminderDate || !reminderSource}>保存事项</button>{reminders.map((reminder) => <article key={reminder.reminder_id} data-complete={reminder.status === "completed"}><div><b>{reminder.title}</b><small>{new Date(reminder.due_at).toLocaleString("zh-CN")} · {reminder.source_note}</small></div>{reminder.status === "pending" && <button onClick={() => completeReminder(reminder)}>标记完成</button>}</article>)}</section>}
+            {patientAccess && <section className="reminder-editor"><h3>Record dates supplied by your clinical team</h3><p>The platform does not calculate medical follow-up schedules. Enter only dates confirmed in an appointment notice or by your clinical team.</p><input value={reminderTitle} onChange={(event) => setReminderTitle(event.target.value)} placeholder="Item, such as a visit or test" /><input type="datetime-local" value={reminderDate} onChange={(event) => setReminderDate(event.target.value)} /><input value={reminderSource} onChange={(event) => setReminderSource(event.target.value)} placeholder="Date source, such as an appointment notice" /><button className="secondary" onClick={addReminder} disabled={loading || !reminderTitle || !reminderDate || !reminderSource}>Save reminder</button>{reminders.map((reminder) => <article key={reminder.reminder_id} data-complete={reminder.status === "completed"}><div><b>{reminder.title}</b><small>{new Date(reminder.due_at).toLocaleString("en")} · {reminder.source_note}</small></div>{reminder.status === "pending" && <button onClick={() => completeReminder(reminder)}>Mark complete</button>}</article>)}</section>}
             {error && <div className="error-message" role="alert">{error}</div>}
           </div>
         )}
 
         {plan && (
           <div className="plan" aria-live="polite">
-            <div className="status-card"><small>系统整理出的当前阶段</small><h3>{statusNames[plan.assessment.current_status] ?? plan.assessment.current_status}</h3><p>{plan.assessment.explanation}</p></div>
-            {plan.assessment.missing_information.length > 0 && <div className="missing"><strong>建议补充或向医生确认</strong><ul>{plan.assessment.missing_information.map((item) => <li key={item.patient_friendly_label}>{item.patient_friendly_label}：{item.reason}</li>)}</ul></div>}
+            <div className="status-card"><small>Current phase organized by the system</small><h3>{statusNames[plan.assessment.current_status] ?? plan.assessment.current_status}</h3><p>{plan.assessment.explanation}</p></div>
+            {plan.assessment.missing_information.length > 0 && <div className="missing"><strong>Information to add or confirm with your clinician</strong><ul>{plan.assessment.missing_information.map((item) => <li key={item.patient_friendly_label}>{item.patient_friendly_label}: {item.reason}</li>)}</ul></div>}
             <div className="topic-grid">{plan.topics.map((topic) => <article key={topic.category}><span>{topic.title}</span><p>{topic.purpose}</p><ul>{topic.suggested_questions.map((item) => <li key={item}>{item}</li>)}</ul></article>)}</div>
           </div>
         )}
         {plan && <div className="facility-box">
-          <div><h3>机构信息筛选</h3><p>只按地点和已核验的公开服务标签筛选，不提供医院或医生排名。</p></div>
-          <label htmlFor="services">希望了解的服务</label>
-          <input id="services" value={desiredServices} onChange={(event) => setDesiredServices(event.target.value)} placeholder="例如 营养门诊、造口门诊、多学科门诊" />
-          <button className="primary" onClick={findFacilities} disabled={loading}>查询核验信息</button>
-          {facilities && <div className="facility-results"><p>{facilities.notice}</p>{facilities.matches.length === 0 ? <div className="empty-evidence">当前目录没有符合条件且已核验的机构。可前往<a href={facilities.official_registry_url} target="_blank" rel="noreferrer">国家卫生健康委医院执业登记查询</a>自行核实。</div> : facilities.matches.map((item) => <article key={item.facility_id}><h4>{item.name}</h4><small>{item.province} · {item.city}</small><ul>{item.matched_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>{item.unmatched_services.length > 0 && <p>尚未核实：{item.unmatched_services.join("、")}</p>}<a href={item.official_registration_url} target="_blank" rel="noreferrer">查看官方登记</a><p className="facility-disclaimer">{item.disclaimer}</p></article>)}</div>}
+          <div><h3>Facility information filter</h3><p>Filters only by location and verified public service attributes. It does not rank hospitals or clinicians.</p></div>
+          <label htmlFor="services">Services of interest</label>
+          <input id="services" value={desiredServices} onChange={(event) => setDesiredServices(event.target.value)} placeholder="Example: nutrition, stoma care, multidisciplinary clinic" />
+          <button className="primary" onClick={findFacilities} disabled={loading}>Search verified information</button>
+          {facilities && <div className="facility-results"><p>{facilities.notice}</p>{facilities.matches.length === 0 ? <div className="empty-evidence">No verified facility in the current directory matches these filters. Check the <a href={facilities.official_registry_url} target="_blank" rel="noreferrer">official National Health Commission register</a>.</div> : facilities.matches.map((item) => <article key={item.facility_id}><h4>{item.name}</h4><small>{item.province} · {item.city}</small><ul>{item.matched_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>{item.unmatched_services.length > 0 && <p>Not verified: {item.unmatched_services.join(", ")}</p>}<a href={item.official_registration_url} target="_blank" rel="noreferrer">View official registration</a><p className="facility-disclaimer">{item.disclaimer}</p></article>)}</div>}
         </div>}
       </section>
 
       <section id="evidence" className="evidence-band">
-        <div className="section-heading light"><span>02</span><div><h2>每个结论都有来处</h2><p>只有经过审核并带有定位信息的证据才能进入回答。</p></div></div>
-        <div className="evidence-grid"><article><FileCheck2 /><b>临床指南</b><p>展示版本、章节和原文页码。</p></article><article><BookOpen /><b>患者教育</b><p>把专业内容转成可理解的解释。</p></article><article><HeartPulse /><b>专家内容</b><p>保留医院、会议和视频时间戳。</p></article></div>
+        <div className="section-heading light"><span>02</span><div><h2>Every statement has provenance</h2><p>Only reviewed evidence with a valid locator can support an answer.</p></div></div>
+        <div className="evidence-grid"><article><FileCheck2 /><b>Clinical guidance</b><p>Shows edition, section, and original page.</p></article><article><BookOpen /><b>Patient education</b><p>Supports understandable explanations of specialist material.</p></article><article><HeartPulse /><b>Expert material</b><p>Retains institution, meeting, and video timestamps.</p></article></div>
         <div className="question-box">
-          <label htmlFor="question">输入一个用于了解信息或准备复诊的问题</label>
-          <textarea id="question" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="例如：复诊时需要准备哪些资料？" />
-          <button onClick={askQuestion} disabled={loading || !question.trim()}>检索已审核证据</button>
-          {answer && <div className="answer"><h3>循证导航结果</h3><p>{answer.answer}</p>{answer.citations.length > 0 ? <ol className="citation-list">{answer.citations.map((citation) => <li key={citation.source_id}><div><span>{evidenceNames[citation.evidence_type] ?? citation.evidence_type}</span><strong>{citation.public_url ? <a href={citation.public_url} target="_blank" rel="noreferrer">{citation.title}</a> : citation.title}</strong><small>{citation.version && `${citation.version} · `}{citationLocator(citation)} · 已审核</small></div>{citation.excerpt && <blockquote>{citation.excerpt}</blockquote>}</li>)}</ol> : <div className="empty-evidence">当前没有足够的已审核证据，系统已安全拒答。</div>}{answer.limitations.length > 0 && <div className="answer-limitations"><strong>仍需注意</strong><ul>{answer.limitations.map((item) => <li key={item}>{item}</li>)}</ul></div>}</div>}
+          <label htmlFor="question">Ask an information or visit-preparation question</label>
+          <textarea id="question" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Example: What information should I prepare for my next visit?" />
+          <button onClick={askQuestion} disabled={loading || !question.trim()}>Search approved evidence</button>
+          {answer && <div className="answer"><h3>Evidence navigation result</h3><p>{answer.answer}</p>{answer.citations.length > 0 ? <ol className="citation-list">{answer.citations.map((citation) => <li key={citation.source_id}><div><span>{evidenceNames[citation.evidence_type] ?? citation.evidence_type}</span><strong>{citation.public_url ? <a href={citation.public_url} target="_blank" rel="noreferrer">{citation.title}</a> : citation.title}</strong><small>{citation.version && `${citation.version} · `}{citationLocator(citation)} · Reviewed</small></div>{citation.excerpt && <blockquote>{citation.excerpt}</blockquote>}</li>)}</ol> : <div className="empty-evidence">There is not enough approved evidence. The system failed closed.</div>}{answer.limitations.length > 0 && <div className="answer-limitations"><strong>Important limitations</strong><ul>{answer.limitations.map((item) => <li key={item}>{item}</li>)}</ul></div>}</div>}
         </div>
       </section>
 
-      <section id="safety" className="safety"><ShieldCheck size={34} /><div><h2>安全边界</h2><p>出现危险症状时优先提示及时就医；涉及具体药物、方案或剂量时，引导你与诊疗团队确认。请勿在演示系统输入姓名、身份证号、手机号等身份信息。</p></div></section>
+      <section id="safety" className="safety"><ShieldCheck size={34} /><div><h2>Safety boundary</h2><p>Potential emergency symptoms prompt timely medical assessment. Questions about a specific drug, regimen, or dose are redirected to the treating team. Do not enter names, government IDs, phone numbers, or other identifying information in a demonstration deployment.</p></div></section>
     </main>
   );
 }

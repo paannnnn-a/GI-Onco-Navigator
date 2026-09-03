@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 
 from backend.app.schemas import FacilityMatch, PatientProfile
 
-DISCLAIMER = "这是按地点和公开服务标签进行的信息筛选，不代表医院排名、疗效比较或就医推荐。请通过官方渠道核实最新服务信息。"
+DISCLAIMER = "This is an informational filter based on location and public service tags. It is not a hospital ranking, outcome comparison, or care recommendation. Verify current services through official channels."
 
 
 def match_facilities(
@@ -29,18 +29,18 @@ def match_facilities(
         unmatched = sorted(desired - services)
         reasons: list[str] = []
         if same_city:
-            reasons.append("与档案所在城市一致")
+            reasons.append("Matches the city in the patient profile")
         elif same_province:
-            reasons.append("与档案所在省份一致")
+            reasons.append("Matches the province in the patient profile")
         elif patient.accepts_cross_province_care:
-            reasons.append("档案允许查看跨省机构")
+            reasons.append("The profile allows facilities outside the home province")
         else:
-            reasons.append("档案未提供完整地点偏好")
+            reasons.append("The profile does not include a complete location preference")
         if matched_services:
-            reasons.append("公开服务标签匹配：" + "、".join(matched_services))
+            reasons.append("Matching public service tags: " + ", ".join(matched_services))
         verified_at = date.fromisoformat(str(facility["verified_at"]))
         if (today - verified_at).days > 365:
-            reasons.append("登记信息核验已超过一年，请优先重新核实")
+            reasons.append("Registry verification is over one year old; confirm it before relying on this result")
         match = FacilityMatch(
             facility_id=str(facility["facility_id"]), name=str(facility["name"]),
             province=str(facility["province"]), city=str(facility["city"]),

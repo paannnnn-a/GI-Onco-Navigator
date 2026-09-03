@@ -1,26 +1,26 @@
-# 外部权威来源登记
+# External authoritative source register
 
-外部来源只在核实官方页面、更新机制、再利用条款和目标人群后登记。登记不等于患者端批准。
+An external source is registered only after its official publisher, update mechanism, reuse terms, and intended audience have been checked. Registration is not patient-publication approval.
 
-## 首批候选来源
+## Initial candidates
 
-| 机构 | 内容 | 用途 | 当前状态 |
+| Publisher | Resource | Intended use | Current state |
 |---|---|---|---|
-| 美国国家癌症研究所（NCI） | Colon Cancer Treatment (PDQ), Patient Version | 结肠癌患者教育与结构对照 | 英文；待中文翻译与医学审核 |
-| 美国国家癌症研究所（NCI） | Rectal Cancer Treatment (PDQ), Patient Version | 直肠癌患者教育与结构对照 | 英文；待中文翻译与医学审核 |
-| 美国国家癌症研究所（NCI） | Stomach Cancer Treatment | 胃癌患者教育与随访主题对照 | 英文；待中文翻译与医学审核 |
-| 国家卫生健康委员会 | 官方医疗卫生机构统计资料 | 医疗机构基础信息候选 | 只可用于机构真实性核对，不能推导专长或排名 |
+| US National Cancer Institute (NCI) | Colon Cancer Treatment (PDQ), Patient Version | Colon-cancer patient education and content-structure reference | English; Chinese translation and medical review required |
+| US National Cancer Institute (NCI) | Rectal Cancer Treatment (PDQ), Patient Version | Rectal-cancer patient education and content-structure reference | English; Chinese translation and medical review required |
+| US National Cancer Institute (NCI) | Stomach Cancer Treatment | Gastric-cancer patient education and follow-up-topic reference | English; Chinese translation and medical review required |
+| National Health Commission of China | Official healthcare institution records | Candidate source for facility identity | Identity verification only; it cannot establish expertise, quality, or ranking |
 
-## 采用原则
+## Adoption rules
 
-- 中国患者的诊疗语境优先采用现行中国权威指南；国外资料作为补充并明确地区差异。
-- Living web source 至少每 30 天检查更新日期和内容哈希。
-- 自动翻译不得直接进入患者端；医学术语和适用范围必须人工审核。
-- 医院匹配只能展示官方可核验的机构属性、地区和公开服务能力，不制作医生排行榜。
-- 来源网页中的图像和第三方材料可能有独立版权，不随正文许可自动获得再利用权。
+- Current authoritative Chinese guidance takes priority for the Chinese clinical context. International material is supplementary and must identify jurisdictional differences.
+- A living web source is checked at least every 30 days for a changed update date or content hash.
+- Machine translation cannot enter the patient index without terminology, scope, and medical review.
+- Facility matching displays only verifiable registration, location, and published service attributes; it does not rank hospitals or clinicians.
+- Images and third-party material on a source page may have separate copyright terms.
 
-登记 URL：
+Registered URLs:
 
-- https://www.cancer.gov/types/colorectal/patient/colon-treatment-pdq
-- https://www.cancer.gov/types/colorectal/patient/rectal-treatment-pdq
-- https://www.cancer.gov/types/stomach/treatment
+- <https://www.cancer.gov/types/colorectal/patient/colon-treatment-pdq>
+- <https://www.cancer.gov/types/colorectal/patient/rectal-treatment-pdq>
+- <https://www.cancer.gov/types/stomach/treatment>

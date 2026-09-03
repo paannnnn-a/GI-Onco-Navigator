@@ -25,7 +25,7 @@ class _ReadableHtmlParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.hidden_depth = 0
-        self.heading = "网页正文"
+        self.heading = "Web page content"
         self.pending_heading = False
         self.current: list[str] = []
         self.blocks: list[tuple[str, str]] = []
@@ -102,7 +102,7 @@ def extract_web_chunks(content: bytes, target_chars: int = 1200) -> list[WebChun
     parser.close()
     chunks: list[WebChunk] = []
     buffer: list[str] = []
-    section = "网页正文"
+    section = "Web page content"
 
     def flush() -> None:
         nonlocal buffer
@@ -111,7 +111,7 @@ def extract_web_chunks(content: bytes, target_chars: int = 1200) -> list[WebChun
             chunks.append(
                 WebChunk(
                     ordinal=len(chunks), text=text,
-                    section_path=[section, f"内容块 {len(chunks) + 1}"],
+                    section_path=[section, f"Content block {len(chunks) + 1}"],
                     content_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                 )
             )

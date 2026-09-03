@@ -400,7 +400,7 @@ def find_facilities(request: FacilityMatchRequest) -> FacilityMatchResponse:
     return FacilityMatchResponse(
         matches=matches,
         official_registry_url="https://zgcx.nhc.gov.cn/unit",
-        notice="结果仅依据已核验的机构登记、地点和公开服务标签筛选；未收录不代表不具备相关服务。",
+        notice="Results are filtered only by verified registry data, location, and public service tags. Omission does not mean a facility lacks a service.",
     )
 
 
@@ -524,20 +524,20 @@ def ask_navigation_question(request: QuestionRequest) -> NavigationAnswer:
             {**audit_payload, "cancer_type": request.patient.cancer_type.value},
         )
         return NavigationAnswer(
-            answer="当前经过审核的证据库中没有检索到足以回答这一问题的内容。请补充资料，或把这个问题带给诊疗团队确认。",
+            answer="The reviewed evidence library does not currently contain enough information to answer this question. Add an appropriate source or discuss the question with your care team.",
             assessment=assessment,
             citations=[],
-            limitations=["未找到经过审核且与当前癌种匹配的证据片段。"],
+            limitations=["No reviewed evidence passage matched the current cancer type."],
         )
     try:
         validate_citations(citations)
     except CitationValidationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     evidence_summary = "\n\n".join(
-        f"证据 {index}：{citation.excerpt}" for index, citation in enumerate(citations, start=1)
+        f"Evidence {index}: {citation.excerpt}" for index, citation in enumerate(citations, start=1)
     )
     answer = (
-        "以下是与问题最相关的已审核资料片段，供你理解情况并准备就诊讨论；系统不据此给出治疗决定。\n\n"
+        "The following reviewed passages are most relevant to the question. Use them to understand the topic and prepare for a clinical discussion; the system does not make treatment decisions.\n\n"
         + evidence_summary
     )
     database.log_event(
@@ -552,5 +552,5 @@ def ask_navigation_question(request: QuestionRequest) -> NavigationAnswer:
         answer=answer,
         assessment=assessment,
         citations=citations,
-        limitations=["当前版本采用抽取式回答，保留原始证据片段以降低无依据生成风险。"],
+        limitations=["This version uses extractive answers and preserves the original evidence passages to reduce unsupported generation."],
     )

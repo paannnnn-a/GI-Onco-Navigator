@@ -1,27 +1,21 @@
-# 用户资料审查记录
+# User-provided material review
 
-本记录只描述导入与治理决定，不复述或重新发布版权受限原文。
+This record describes ingestion and governance decisions without reproducing copyright-restricted source text.
 
-| 来源 | 技术检查 | 初始决定 | 患者端状态 |
+| Source | Technical findings | Processing decision | Patient state |
 |---|---|---|---|
-| 2025 CSCO 结直肠癌诊疗指南 | 160 页；视觉抽检清晰；0 页具有可用文本层 | 全文 OCR、页级抽查、版本标记 | 隔离 |
-| 2026 CSCO 结直肠癌诊疗指南 | 174 页；视觉抽检清晰；0 页具有可用文本层 | 全文 OCR；登记为 2025 版后继版本 | 隔离 |
-| 胃癌101患者手册 2026 v1 | 54 页；47 页中文字体映射乱码，末尾 7 页参考文献文本可提取 | 正文 OCR；逐条核查引用、作者与许可；只作为患者解释层候选 | 隔离 |
-| 结直肠癌治疗入门 | 132 页；视觉可读但文本层全部不合格；页面显示 2016 年印制日期 | 全文 OCR；只作为历史患者教育候选，不作为当前治疗依据 | 隔离 |
-| 结直肠癌肝转移的知识图谱：熊猫和朋友们 | 88 个段落、84 个非空段落，可直接提取 | 已生成 4 个本地切片；用于来源和视频线索发现 | 隔离 |
+| 2025 CSCO Guidelines for Colorectal Cancer | 160-page scan; visually clear samples; no usable text layer | Full local OCR, page sampling, and version tracking | Quarantined |
+| 2026 CSCO Guidelines for Colorectal Cancer | 174-page scan; visually clear samples; no usable text layer | Full local OCR; registered as successor to the 2025 edition | Quarantined |
+| Gastric Cancer 101 Patient Handbook, 2026 v1 | 54 pages; broken Chinese font mapping on 47 body pages; seven reference pages extract as text | OCR body; verify authorship, permission, citations, and claims; patient-explanation candidate only | Quarantined |
+| Introduction to Colorectal Cancer Treatment | 132 pages; visually readable but every text-layer page fails quality checks; visible 2016 print date | Full OCR; historical patient-education candidate only, not current treatment authority | Quarantined |
+| Knowledge Graph of Colorectal Liver Metastasis: Panda and Friends | 88 paragraphs, 84 non-empty; directly extractable | Four local discovery chunks; source and video-lead discovery only | Quarantined |
 
-## 高风险内容处理
+## High-risk claim handling
 
-社群 DOCX 中包含具体方案、适应证、费用、疗效数字以及医院/医生名单。由于多数结论未在段落旁提供可验证的一手文献引用，系统不能将它们直接视为临床指南或向患者给出个体化推荐。后续流程是：
+The community DOCX contains treatment regimens, indications, costs, outcomes, and provider names without consistent claim-level primary citations. It cannot be treated as guidance or drive individual recommendations. Each claim must be separated, checked against current guidance, regulator material, trial registration, or primary research, assigned scope and date, and reviewed by a qualified medical reviewer. Provider information may be matched only through maintainable official directories and is never ranked.
 
-1. 把每条可验证主张拆成独立候选记录。
-2. 优先核对现行指南、药品监管文件、注册临床试验或原始论文。
-3. 记录支持、冲突、适用人群和证据日期。
-4. 由具备资质的医学审核者决定是否可用于患者教育。
-5. 医院与医生信息只允许基于可维护的官方机构目录进行条件匹配，不生成个人排名。
+Original files remain in ignored local storage and are not committed. The public repository contains only checksums, source metadata, processing code, and governance decisions.
 
-所有原始文件均位于本地忽略目录，不进入公开 Git 仓库。仓库只包含哈希、来源元数据、处理程序和审查决定。
+Run `gi-onco audit-pdf <file>` before ingestion to generate a non-content quality report with checksum, file size, page count, character statistics, and unresolved page numbers. Corrupt pages are excluded from chunks. Successful OCR does not establish medical accuracy: complex tables can still contain reading-order, Roman-numeral, and terminology errors.
 
-可使用 `gi-onco audit-pdf <文件>` 在导入前生成不包含原文的质量报告。报告记录文件哈希、大小、页数、文本字符统计以及必须 OCR 的页码；任何检测为乱码的页面都会在切片阶段被排除。
-
-2026-09-03 已分别抽测四份 PDF 的代表页。本地 OCR 均能产生可读中文，但复杂表格仍会出现罗马数字、分栏顺序和专有名词误识别。因此 OCR 成功不等于内容获准发布：所有切片仍须逐页核对定位，并通过提取质量、医学准确性和患者可读性三项人工审查。
+On 2026-09-03, representative pages from all four PDFs produced readable Chinese with local OCR. Full OCR of the 2026 CSCO guideline produced 106 quarantined chunks. Six initially unresolved pages (4, 17, 20, 56, 122, and 157) were visually confirmed to be legitimate cover or section-title pages, which prompted a safer sparse-page detection rule. No extracted medical content has been approved for patient use.

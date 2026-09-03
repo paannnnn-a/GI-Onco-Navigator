@@ -90,7 +90,7 @@ def run_benchmark(case_dir: str | Path) -> BenchmarkResult:
                 )
                 for dimension in REQUIRED_REVIEW_DIMENSIONS:
                     database.review_source(
-                        source_id, dimension, "approved", "Benchmark fixture", "合成评测资料审核标记。"
+                        source_id, dimension, "approved", "Benchmark fixture", "Synthetic benchmark evidence review marker."
                     )
             expected_sources = set(case.get("expected_source_ids", []))
             if expected_sources:

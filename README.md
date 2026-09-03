@@ -1,49 +1,46 @@
 # GI-Onco Navigator
 
-An open-source, evidence-grounded postoperative navigation platform for gastrointestinal cancer patients.
+An open-source, evidence-grounded postoperative navigation platform for people affected by gastrointestinal cancer.
 
-GI-Onco Navigator 将患者结构化档案、术后阶段判断、医学资料治理、可追溯检索和安全边界整合为一个可部署的 Web 应用。它帮助患者理解“目前处于什么阶段、缺少哪些关键信息、复诊时可以讨论什么”，不诊断、不处方，也不替代诊疗团队。
+GI-Onco Navigator connects a structured patient profile, a postoperative journey model, governed medical sources, traceable retrieval, and safety controls in one deployable web application. It helps patients understand their current phase, identify missing information, prepare questions for clinical visits, and locate relevant evidence. It does not diagnose, prescribe, rank clinicians, or replace the treating team.
 
-## 当前能力
+## Capabilities
 
-- 结肠癌、直肠癌、胃癌术后档案与字段校验
-- 基于手术日期、病理和当前治疗信息的患者旅程状态机
-- 危险症状与个体化治疗指令拦截
-- PDF 文本提取、乱码/OCR 需求识别、分页切片与内容哈希
-- 来源版本、证据类型、版权状态、审核状态与替代关系管理
-- SQLite FTS5 检索、癌种过滤、证据等级排序与页码引用
-- 仅使用 `approved` 片段的患者端抽取式回答
-- 患者档案明确保存同意、短期签名访问令牌、自助导出与删除、资料注册与问答操作审计
-- 仅记录诊疗团队或预约通知已确定日期的复诊事项，不自行计算医疗随访时间
-- 管理接口密钥鉴权与患者导航讨论清单
-- PDF、DOCX、受限 HTTPS 网页与带时间戳字幕资料导入；未审核资料默认隔离
-- 响应式 React 患者端，可调用后端完成阶段判断
-- 独立管理工作台与四维证据审核门禁（版权、提取质量、医学准确性、患者可读性）
-- 管理端安全上传 PDF、DOCX、SRT/VTT（25 MiB 限制、文件特征检查、强制隔离与来源编号冲突保护）
-- 来源撤回、重新隔离、过期与明确版本替代的全链路状态记录
-- 管理端切片正文、页码/时间戳/网页章节、提取方式与内容哈希抽查
-- Docker、CI、自动测试和可扩展 AI Benchmark
-- 请求追踪、脱敏审计、Prometheus 基础指标以及容器存活/就绪检查
-- 基于官方登记、地点偏好和公开服务标签的非排名式机构信息筛选
+- Postoperative profiles for colon, rectal, and gastric cancer
+- A patient-journey state machine based on surgery date, pathology readiness, and current treatment status
+- Emergency-symptom escalation and blocking of patient-specific treatment instructions
+- PDF, DOCX, verified subtitle, and restricted public-web ingestion
+- Local OCR, corruption detection, page-level extraction audits, and content hashing
+- Evidence versioning, copyright state, review state, provenance, and supersession tracking
+- SQLite FTS5 lexical retrieval plus local concept-based retrieval and evidence-priority reranking
+- Patient answers built only from approved passages with page, timestamp, or section citations
+- Explicit consent for stored profiles, short-lived signed access tokens, and self-service export and deletion
+- Reminders only for dates already supplied by a clinical team or appointment notice
+- A responsive patient web app and a separate evidence-governance workbench
+- Four mandatory publication gates: copyright, extraction quality, medical accuracy, and patient readability
+- Safe uploads with size, format, archive, and duplicate-source checks; every upload starts in quarantine
+- Source withdrawal, quarantine, obsolescence, and version-replacement workflows
+- Non-ranking facility filtering based only on verified registration and service attributes
+- Privacy-conscious audit events, request tracing, health endpoints, and Prometheus metrics
+- Docker deployment, CI, automated tests, and an extensible 50-case benchmark
 
-> 默认不连接大模型。患者端保留检索到的原文证据片段，以降低无依据生成风险。模型生成可作为可选层接入，但仍须通过引用和安全校验。
+The default build does not connect to a large language model. It returns retrieved, reviewed evidence directly to reduce unsupported generation. A model can be added as an optional presentation layer, but it must never bypass citation, review, and safety gates.
 
-## 快速运行
+## Quick start
 
-### Docker（推荐）
+### Docker
 
 ```bash
 docker compose up --build
 ```
 
-- 患者端：http://localhost:5173
-- 证据治理工作台：http://localhost:5173/admin（需 `ADMIN_API_KEY`）
-- API 文档：http://localhost:8000/docs
-- 健康检查：http://localhost:8000/health
-- 就绪检查：http://localhost:8000/health/ready
-- Prometheus 指标：http://localhost:8000/metrics
+- Patient app: <http://localhost:5173>
+- Evidence workbench: <http://localhost:5173/admin> (requires `ADMIN_API_KEY`)
+- API documentation: <http://localhost:8000/docs>
+- Readiness: <http://localhost:8000/health/ready>
+- Metrics: <http://localhost:8000/metrics>
 
-### 本地开发
+### Local development
 
 ```bash
 python -m venv .venv
@@ -51,36 +48,36 @@ python -m venv .venv
 .venv/Scripts/uvicorn backend.app.main:app --reload
 ```
 
-在另一个终端运行 `cd frontend`、`pnpm install` 和 `pnpm dev`。
+In another terminal, run `cd frontend`, `pnpm install`, and `pnpm dev`.
 
-## 资料导入
+## Evidence ingestion
 
-版权受限的指南和患者资料不会提交到 GitHub。仓库只保存来源清单、哈希、解析程序和允许公开的派生元数据。管理员在本地放置合法取得的 PDF 后运行：
+Copyright-restricted guidelines and patient materials are not committed to GitHub. The repository stores source manifests, checksums, processing code, and permitted metadata. Place lawfully obtained files in a local ignored directory and run:
 
 ```bash
+gi-onco audit-pdf /path/to/source.pdf
 gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf
+gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf --ocr
 gi-onco ingest-docx data/sources/example.json /path/to/source.docx
 gi-onco ingest-transcript data/sources/video.json /path/to/verified-subtitles.srt
 gi-onco ingest-web data/sources/nci-colon-patient-pdq.json
 ```
 
-视频资料使用人工核对后的 UTF-8 SRT 或 WebVTT 字幕导入，每个切片保留原视频起止时间。字幕导入后仍处于隔离区，不能绕过四项审核门禁。
+`audit-pdf` reports extraction quality without storing source text. PDF ingestion records all pages that still require OCR. A PDF cannot pass the extraction-quality gate while any page remains unresolved. Re-ingesting a source invalidates its previous chunks and approvals.
 
-网页导入仅接受不含凭证的公开 HTTPS 地址，并拒绝本机、内网和保留地址，限制响应类型及大小。系统清除脚本、样式和导航内容，以标题与内容块作为引用定位，同时保存抓取内容哈希。网页内容同样必须经过四项审核，外语资料还需要人工翻译与医学复核。
+Video sources use human-verified UTF-8 SRT or WebVTT subtitles and retain timestamp locators. Public web ingestion accepts only credential-free HTTPS URLs, rejects private and reserved network targets, limits content type and size, and preserves section locators and a content hash. Every newly ingested source remains quarantined.
 
-如果输出中的 `pages_needing_ocr` 非空，该来源不会因“导入成功”自动变为患者端可用。任何注册或导入操作都只能把新来源放入隔离区；只有在管理工作台中完成版权、提取质量、医学准确性和患者可读性四项审核，来源及其切片才会同时变为 `approved`。审核决定、审核人、时间和理由均保留记录。
+## Evidence hierarchy
 
-## 证据分层
+1. Clinical guidelines
+2. Peer-reviewed research
+3. Patient education material
+4. Expert educational video or conference material
+5. Community material and other discovery leads
 
-1. 临床指南
-2. 同行评议研究
-3. 患者教育材料
-4. 专家视频/会议内容
-5. 患者社群和其他线索
+The interface displays evidence type, version, and source locator. Community material, provider lists, and unverified treatment claims cannot support patient-facing answers.
 
-系统明确显示证据类型、版本和定位信息。社群资料、医院名单和未核验的治疗结论默认隔离，不能直接驱动患者回答。
-
-## 测试与评估
+## Tests and benchmark
 
 ```bash
 pytest -q
@@ -88,33 +85,31 @@ ruff check backend
 gi-onco-benchmark benchmarks/cases
 ```
 
-Benchmark 当前包含 50 个虚构病例，其中 11 个带检索目标，覆盖阶段判断、安全分类、检索 Recall@K、引用有效性、拒答准确率和危险建议率。它是工程回归测试，不是临床有效性验证；详见 [评测说明](docs/benchmark.md)。
+The benchmark contains 50 entirely synthetic cases, including 11 retrieval targets. It evaluates journey classification, safety routing, Recall@K, citation validity, refusal accuracy, and dangerous-advice rate. It is an engineering regression suite, not evidence of clinical effectiveness.
 
-## 项目结构
+## Repository layout
 
 ```text
-backend/       FastAPI、患者旅程、安全层、资料导入、检索与审计
-frontend/      React + TypeScript 患者端
-data/          来源元数据与本地资料目录（原始资料默认忽略）
-benchmarks/    去标识化评测病例与评估程序
-docs/          产品范围、数据库设计与证据治理规范
-.github/       持续集成
+backend/       FastAPI application, safety layer, ingestion, retrieval, and audit logic
+frontend/      React and TypeScript patient app and evidence workbench
+data/          Source manifests and ignored local evidence directories
+benchmarks/    Synthetic evaluation cases and benchmark runner
+docs/          Architecture, governance, deployment, and dataset documentation
+.github/       Continuous integration and repository automation
 ```
 
-详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md)、[证据治理](docs/evidence_governance.md)、[机构信息导航](docs/facility_navigation.md)、[评测说明](docs/benchmark.md)、[用户资料审查](docs/material_review.md) 和 [外部权威来源](docs/external_sources.md)。
+See [System design](docs/project_design.md), [Database design](docs/database_design.md), [Evidence governance](docs/evidence_governance.md), [Facility navigation](docs/facility_navigation.md), [Benchmark methodology](docs/benchmark.md), [Material review](docs/material_review.md), [External sources](docs/external_sources.md), and [Deployment boundaries](docs/deployment.md).
 
-面向公网部署前必须阅读 [部署边界与检查清单](docs/deployment.md)。默认 Compose 只用于本地评估；生产模板不会代替隐私、安全、临床和合规审查。
+## Medical safety and privacy
 
-## 医疗安全与隐私
+- The system does not provide patient-specific drugs, regimens, doses, or stop-treatment instructions.
+- Potential emergency symptoms stop the ordinary information flow and direct the user to timely medical assessment.
+- When no approved evidence is retrieved, the system fails closed instead of filling gaps from model knowledge.
+- Never commit identifiable patient information to a public repository.
+- A public deployment still requires organizational identity, encryption, access control, backup, security, privacy, clinical, and jurisdiction-specific compliance review.
 
-- 不输出具体患者的药物、方案、剂量或停药指令。
-- 识别到可能的紧急症状时停止普通问答，并提示及时医疗评估。
-- 未检索到已审核证据时明确拒答，不以模型常识补全。
-- 不应将真实患者身份信息提交到公共仓库；生产部署还需身份认证、加密、访问控制、备份和合规审查。
-- 本项目用于患者教育与就诊准备，不构成医疗建议。
+## Contributing and license
 
-## 贡献与许可
+Contributions of code, openly licensed metadata, parsers, and synthetic test cases are welcome. Medical content must include source, version, copyright status, and accountable review; an ordinary code merge cannot publish it to patients.
 
-欢迎贡献代码、公开许可的资料元数据、解析器和虚构测试病例。新增医学内容必须注明来源、版本、版权状态与审核人，不能通过普通代码合并直接成为患者端已审核证据。
-
-贡献前请阅读 [贡献规范](CONTRIBUTING.md)、[安全政策](SECURITY.md) 和 [行为准则](CODE_OF_CONDUCT.md)。项目代码采用 [Apache-2.0](LICENSE) 许可；第三方医学资料始终遵循其各自版权和许可，不因本仓库而重新授权。
+Read [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Project code is licensed under Apache-2.0. Third-party medical sources retain their original terms and are not relicensed by this repository.

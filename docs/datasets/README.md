@@ -1,14 +1,5 @@
-# Dataset
+# Datasets
 
+This directory contains project evaluation data. The repository does not include identifiable medical records.
 
-本目录用于存放项目测试数据。
-
-
-由于医疗数据涉及隐私，
-项目初期使用模拟患者数据。
-
-
-Future:
-
-- Synthetic patient cases
-- Public medical datasets
+The current benchmark uses entirely synthetic patient cases. Any future public medical dataset must have documented provenance, license, intended use, privacy assessment, and leakage review before inclusion.

@@ -1,12 +1,12 @@
-# 医疗机构信息导航
+# Healthcare facility navigation
 
-本模块只根据患者主动填写的所在地、是否接受跨省就医、癌种和希望了解的服务标签，对已经核验的机构记录进行筛选。结果不包含医院、科室或医生的质量分数，不声称疗效差异，也不替患者选择就医机构。
+This module filters verified facility records using only the location, willingness to travel, cancer type, and service attributes supplied by the patient. Results contain no quality score for a hospital, department, or clinician; make no outcome claim; and do not select a provider for the patient.
 
-## 数据来源与核验
+## Sources and verification
 
-- 机构执业状态应通过[国家卫生健康委医院执业登记查询](https://zgcx.nhc.gov.cn/unit)核验。
-- 服务范围、重点学科、医疗技术准入、流程和联系方式，应以机构官方网站主动公开的信息为依据。
-- 国家卫生健康委《[医疗卫生机构信息公开管理办法](https://www.nhc.gov.cn/wjw/gfxwj/202201/ff9ccaeb120c4a5b81699eb5d77676a9.shtml)》列明机构基本概况、科室分布、服务内容、重点学科、医疗技术准入和服务流程等主动公开范围，也要求信息真实准确、及时更新。
-- 管理员必须记录核验日期、官方登记链接和核验说明。未核验、撤销或过期记录不进入患者筛选。
+- Current operating registration should be checked in the [National Health Commission facility register](https://zgcx.nhc.gov.cn/unit).
+- Service scope, key disciplines, regulated medical technologies, contact details, and access processes must come from the facility's official website.
+- The National Health Commission's [Measures for the Administration of Healthcare Institution Information Disclosure](https://www.nhc.gov.cn/wjw/gfxwj/202201/ff9ccaeb120c4a5b81699eb5d77676a9.shtml) identifies institution overview, department distribution, services, key disciplines, regulated technologies, and service processes as disclosure categories and requires accurate, timely updates.
+- An administrator records the verification date, official registration link, and verification note. Unverified, withdrawn, or stale records do not enter patient filtering.
 
-“已核验”仅表示上述公开字段与官方页面一致，不代表平台对医疗质量、可及性、费用或个体适用性作出保证。患者仍需直接联系机构和医保部门确认。
+“Verified” means only that recorded public attributes matched the cited official pages on the verification date. It is not a platform guarantee of clinical quality, access, cost, insurance coverage, or suitability for an individual. Patients must confirm these matters directly with the facility and payer.

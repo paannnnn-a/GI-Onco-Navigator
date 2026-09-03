@@ -391,7 +391,7 @@ class Database:
                             ) VALUES (?,?,?,?,?)""",
                             (
                                 superseded, "approved", "outdated", reviewer,
-                                f"被已审核来源 {source_id} 明确替代。",
+                                f"Explicitly superseded by reviewed source {source_id}.",
                             ),
                         )
         return self.get_review_state(source_id)

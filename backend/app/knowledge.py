@@ -69,16 +69,25 @@ def normalize_text(text: str) -> str:
 
 
 def looks_corrupted(text: str) -> bool:
-    if len(text.strip()) < 40:
+    stripped = text.strip()
+    if len(stripped) < 4:
         return True
     control_chars = sum(1 for char in text if ord(char) < 32 and char not in "\n\r\t")
     replacement_like = sum(text.count(char) for char in ("�", "Ӌ", "δ", "൭", "Ҩ"))
     letters = [char for char in text if unicodedata.category(char).startswith("L")]
     unexpected_letters = sum(not _is_expected_letter(char) for char in letters)
     unexpected_ratio = unexpected_letters / max(len(letters), 1)
-    return (
+    sparse_but_valid = (
+        len(stripped) < 40
+        and len(letters) >= 4
+        and unexpected_letters == 0
+        and control_chars == 0
+        and replacement_like == 0
+    )
+    return not sparse_but_valid and (
         control_chars > 3
         or replacement_like / max(len(text), 1) > 0.01
+        or len(stripped) < 40
         or (len(letters) >= 20 and unexpected_ratio > 0.03)
     )
 

@@ -9,11 +9,11 @@ const citation = {
 
 describe("citationLocator", () => {
   it("formats a page range", () => {
-    expect(citationLocator({ ...citation, page_start: 3, page_end: 5 })).toBe("第 3–5 页");
+    expect(citationLocator({ ...citation, page_start: 3, page_end: 5 })).toBe("Page 3–5");
   });
 
   it("formats a verified video timestamp", () => {
-    expect(citationLocator({ ...citation, timestamp_start_seconds: 72 })).toBe("视频 72 秒处");
+    expect(citationLocator({ ...citation, timestamp_start_seconds: 72 })).toBe("Video at 72 seconds");
   });
 
   it("formats a webpage section path", () => {
@@ -21,6 +21,6 @@ describe("citationLocator", () => {
   });
 
   it("does not invent a locator", () => {
-    expect(citationLocator(citation)).toBe("定位信息不可用");
+    expect(citationLocator(citation)).toBe("Locator unavailable");
   });
 });
