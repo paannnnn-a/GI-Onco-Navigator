@@ -85,7 +85,7 @@ ruff check backend
 gi-onco-benchmark benchmarks/cases
 ```
 
-The benchmark contains 50 entirely synthetic cases, including 11 retrieval targets. It evaluates journey classification, safety routing, Recall@K, citation validity, refusal accuracy, and dangerous-advice rate. It is an engineering regression suite, not evidence of clinical effectiveness.
+The benchmark contains 60 entirely synthetic bilingual cases, including 11 retrieval targets. It evaluates journey classification, bilingual safety routing, Recall@K, citation validity, refusal accuracy, and dangerous-advice rate. It is an engineering regression suite, not evidence of clinical effectiveness.
 
 ## Repository layout
 

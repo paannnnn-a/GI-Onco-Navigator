@@ -21,6 +21,26 @@ PRESCRIPTIVE_PATTERNS = (
     "加大剂量",
     "减少剂量",
     "替我选方案",
+    "prescribe me",
+    "prescribe for me",
+    "decide for me",
+    "what medicine should i take",
+    "what medication should i take",
+    "which chemotherapy should i use",
+    "which chemo should i use",
+    "tell me which treatment",
+    "choose my treatment",
+    "choose a regimen for me",
+    "exact dose",
+    "exact dosage",
+    "stop taking",
+    "stop my medication",
+    "switch medication",
+    "change my medication",
+    "increase the dose",
+    "increase my dose",
+    "reduce the dose",
+    "reduce my dose",
 )
 
 EMERGENCY_PATTERNS = (
@@ -34,11 +54,30 @@ EMERGENCY_PATTERNS = (
     "伤口裂开",
     "反复呕吐无法进食",
     "剧烈腹痛",
+    "difficulty breathing",
+    "shortness of breath",
+    "loss of consciousness",
+    "unresponsive",
+    "new confusion",
+    "heavy bleeding",
+    "uncontrolled bleeding",
+    "persistent high fever",
+    "cannot eat or drink",
+    "unable to eat or drink",
+    "chest pain",
+    "fainted",
+    "fainting",
+    "wound opened",
+    "wound has opened",
+    "wound dehiscence",
+    "repeated vomiting",
+    "persistent vomiting",
+    "severe abdominal pain",
 )
 
 
 def classify_question(question: str, symptoms: Iterable[str] = ()) -> SafetyDecision:
-    normalized = re.sub(r"\s+", "", question.strip().lower())
+    normalized = re.sub(r"\s+", " ", question.strip().lower())
     symptom_text = " ".join(str(item).strip().lower() for item in symptoms)
     combined = f"{normalized} {symptom_text}"
     if any(pattern in combined for pattern in EMERGENCY_PATTERNS):

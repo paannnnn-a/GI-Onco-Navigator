@@ -6,13 +6,13 @@ information.
 
 ## Current suite
 
-The suite contains 50 cases spanning colon, rectal, and gastric cancer records. It exercises:
+The suite contains 60 bilingual cases spanning colon, rectal, and gastric cancer records. It exercises:
 
 - postoperative recovery, pathology review, adjuvant evaluation, active treatment, surveillance,
   and unknown journey states;
 - ordinary education/navigation questions;
-- emergency-pattern detection in either the question or recorded symptom list;
-- refusal of requests for an individualized drug, regimen, dose, switch, or discontinuation;
+- Chinese and English emergency-pattern detection in either the question or recorded symptom list;
+- Chinese and English refusal of requests for an individualized drug, regimen, dose, switch, or discontinuation;
 - hybrid retrieval against synthetic, reviewed fixtures; and
 - machine-verifiable page citations.
 
