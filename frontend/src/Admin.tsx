@@ -2,7 +2,8 @@ import { CheckCircle2, ClipboardCheck, LockKeyhole, RefreshCw, ShieldAlert, Uplo
 import { useState } from "react";
 
 type Dimension = "copyright" | "extraction_quality" | "medical_accuracy" | "patient_readability";
-type Source = { source_id: string; title: string; evidence_type: string; review_status: string; version?: string };
+type ExtractionAudit = { pages?: number; readable_text_pages?: number; pages_needing_ocr?: number; paragraphs?: number; verified_cues?: number; readable_blocks?: number; unresolved_blocks?: number };
+type Source = { source_id: string; title: string; evidence_type: string; review_status: string; version?: string; metadata?: { extraction_audit?: ExtractionAudit } };
 type Review = { dimension: Dimension; decision: "approved" | "rejected"; reviewer: string; reason: string };
 type ReviewState = { source_id: string; review_status: string; required_dimensions: Dimension[]; latest_reviews: Review[] };
 type ChunkPage = { total: number; items: { chunk_id: string; ordinal: number; text: string; page_start?: number; page_end?: number; timestamp_start_seconds?: number; timestamp_end_seconds?: number; section_path: string[]; extraction_method: string; review_status: string; content_hash: string }[] };
@@ -118,6 +119,8 @@ export function Admin() {
   }
 
   const latest = new Map(state?.latest_reviews.map((item) => [item.dimension, item]));
+  const extractionAudit = selected?.metadata?.extraction_audit;
+  const unresolved = extractionAudit?.pages_needing_ocr ?? extractionAudit?.unresolved_blocks ?? 0;
 
   return <main className="admin-shell">
     <header className="admin-header"><div><span className="eyebrow">GI-Onco Navigator</span><h1>证据治理工作台</h1><p>资料默认隔离。四项审核全部通过后，才允许进入患者检索。</p></div><a href="/">返回患者端</a></header>
@@ -139,6 +142,7 @@ export function Admin() {
       <section className="review-panel">
         {!selected || !state ? <div className="admin-empty"><ClipboardCheck size={40} /><p>选择一个来源，查看并记录审核。</p></div> : <>
           <div className="review-title"><div><small>{selected.source_id}</small><h2>{selected.title}</h2></div><strong data-status={state.review_status}>{state.review_status}</strong></div>
+          {extractionAudit && <section className="extraction-audit" data-complete={unresolved === 0}><div><b>提取完整性</b><strong>{unresolved === 0 ? "可以进入人工抽查" : `${unresolved} 个单元尚未识别`}</strong></div><p>{extractionAudit.pages !== undefined ? `共 ${extractionAudit.pages} 页，${extractionAudit.readable_text_pages ?? 0} 页文本可读。` : extractionAudit.paragraphs !== undefined ? `已提取 ${extractionAudit.paragraphs} 个非空段落。` : `已核对 ${extractionAudit.verified_cues ?? extractionAudit.readable_blocks ?? 0} 个内容单元。`}{unresolved > 0 && " 必须完成 OCR 并重新导入，才能通过提取质量审核。"}</p></section>}
           <div className="lifecycle-actions"><span>紧急状态控制</span><button onClick={() => changeLifecycle("quarantined")} disabled={busy}>重新隔离</button><button onClick={() => changeLifecycle("outdated")} disabled={busy}>标记过期</button><button className="reject" onClick={() => changeLifecycle("withdrawn")} disabled={busy}>撤回</button></div>
           <div className="reviewer-fields"><label>审核人<input value={reviewer} onChange={(event) => setReviewer(event.target.value)} placeholder="真实姓名或团队标识" /></label><label>本次审核依据<textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="记录核对范围、发现和决定理由" /></label></div>
           <section className="chunk-preview"><h3>提取内容抽查 <small>{chunks?.total ?? 0} 个内容块，当前显示前 20 个</small></h3>{chunks?.items.length === 0 && <p>该来源尚无可审核内容块，不能仅凭来源名称完成内容审核。</p>}{chunks?.items.map((chunk) => <details key={chunk.chunk_id}><summary><span>内容块 {chunk.ordinal + 1}</span><small>{chunk.page_start ? `第 ${chunk.page_start}${chunk.page_end && chunk.page_end !== chunk.page_start ? `–${chunk.page_end}` : ""} 页` : chunk.timestamp_start_seconds !== undefined ? `${chunk.timestamp_start_seconds}–${chunk.timestamp_end_seconds ?? "?"} 秒` : chunk.section_path.join(" / ") || "无定位"} · {chunk.extraction_method}</small></summary><p>{chunk.text}</p><code>SHA-256 {chunk.content_hash}</code></details>)}</section>

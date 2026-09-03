@@ -35,6 +35,12 @@
 [data-status="rejected"] { background: #fde3e3; color: #922d2d; }
 .review-title { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #e1e8e4; padding-bottom: 1rem; }
 .review-title h2 { margin: .25rem 0 0; }
+.extraction-audit { margin: 1rem 0; padding: .85rem 1rem; border: 1px solid #e6b7a9; border-radius: 12px; background: #fff7f3; }
+.extraction-audit[data-complete="true"] { border-color: #b9d8c6; background: #f2faf5; }
+.extraction-audit div { display: flex; justify-content: space-between; gap: 1rem; }
+.extraction-audit strong { color: #9a3f27; }
+.extraction-audit[data-complete="true"] strong { color: #236a45; }
+.extraction-audit p { margin: .45rem 0 0; color: #52645d; line-height: 1.55; }
 .reviewer-fields { display: grid; grid-template-columns: .65fr 1.35fr; gap: 1rem; margin: 1.2rem 0; }
 .lifecycle-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; padding: .8rem 0; border-bottom: 1px solid #e1e8e4; }
 .lifecycle-actions span { margin-right: auto; font-size: .82rem; font-weight: 700; color: #6b7d76; }

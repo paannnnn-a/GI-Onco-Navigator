@@ -107,6 +107,12 @@ def test_admin_source_registration_requires_key(tmp_path, monkeypatch) -> None:
         headers={"X-Admin-Key": main.settings.admin_api_key},
     )
     assert response.status_code == 201
+    listed = client.get(
+        "/api/v1/admin/evidence/sources", headers={"X-Admin-Key": main.settings.admin_api_key}
+    )
+    assert listed.status_code == 200
+    assert listed.json()[0]["metadata"] == {}
+    assert "metadata_json" not in listed.json()[0]
     assert client.get("/api/v1/evidence/sources").json() == []
     assert client.get("/api/v1/admin/evidence/sources").status_code == 401
     assert len(client.get("/api/v1/admin/evidence/sources", headers={"X-Admin-Key": main.settings.admin_api_key}).json()) == 1

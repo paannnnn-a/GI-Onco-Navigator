@@ -276,7 +276,15 @@ def list_evidence_sources() -> list[dict[str, object]]:
 
 @app.get("/api/v1/admin/evidence/sources", dependencies=[Depends(require_admin)])
 def list_admin_evidence_sources() -> list[dict[str, object]]:
-    return database.list_sources()
+    sources: list[dict[str, object]] = []
+    for source in database.list_sources():
+        item = dict(source)
+        try:
+            item["metadata"] = json.loads(str(item.pop("metadata_json", "{}")))
+        except json.JSONDecodeError:
+            item["metadata"] = {"metadata_error": "invalid stored JSON"}
+        sources.append(item)
+    return sources
 
 
 @app.post("/api/v1/admin/evidence/sources", status_code=201, dependencies=[Depends(require_admin)])
