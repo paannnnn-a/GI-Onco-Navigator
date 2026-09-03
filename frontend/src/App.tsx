@@ -28,7 +28,11 @@ type Plan = {
 };
 type Answer = {
   answer: string;
-  citations: { title: string; version?: string; page_start?: number; excerpt?: string }[];
+  citations: {
+    source_id: string; title: string; evidence_type: string; version?: string;
+    page_start?: number; page_end?: number; timestamp_start_seconds?: number;
+    excerpt?: string; public_url?: string; section_path: string[]; review_status: string;
+  }[];
   limitations: string[];
 };
 type FacilityResponse = {
@@ -54,6 +58,20 @@ const statusNames: Record<string, string> = {
   rehabilitation: "康复阶段",
   unknown: "信息不足，暂无法判断",
 };
+
+const evidenceNames: Record<string, string> = {
+  guideline: "临床指南", peer_reviewed: "同行评议研究", patient_education: "患者教育",
+  expert_video: "专家视频", other: "其他资料",
+};
+
+export function citationLocator(citation: Answer["citations"][number]): string {
+  if (citation.page_start) {
+    return `第 ${citation.page_start}${citation.page_end && citation.page_end !== citation.page_start ? `–${citation.page_end}` : ""} 页`;
+  }
+  if (citation.timestamp_start_seconds !== undefined) return `视频 ${citation.timestamp_start_seconds} 秒处`;
+  if (citation.section_path.length) return citation.section_path.join(" / ");
+  return "定位信息不可用";
+}
 
 async function postJson<T>(url: string, body: object): Promise<T> {
   const response = await fetch(url, {
@@ -102,9 +120,31 @@ export function App() {
 
   useEffect(() => {
     if (!patientAccess) return;
-    fetch(`/api/v1/patients/${patientAccess.patient_id}/reminders`, {
-      headers: { "Authorization": `Bearer ${patientAccess.access_token}` },
-    }).then((response) => response.ok ? response.json() : []).then(setReminders).catch(() => undefined);
+    const headers = { "Authorization": `Bearer ${patientAccess.access_token}` };
+    async function restoreSession() {
+      try {
+        const [recordResponse, reminderResponse] = await Promise.all([
+          fetch(`/api/v1/patients/${patientAccess!.patient_id}`, { headers }),
+          fetch(`/api/v1/patients/${patientAccess!.patient_id}/reminders`, { headers }),
+        ]);
+        if ([401, 403].includes(recordResponse.status) || [401, 403].includes(reminderResponse.status)) {
+          sessionStorage.removeItem("gi-onco-patient-access"); setPatientAccess(null);
+          setRecordStatus("访问凭证已过期，请在需要时重新保存档案。"); return;
+        }
+        if (recordResponse.ok) {
+          const record = await recordResponse.json() as Profile;
+          setCancerType(record.cancer_type); setSurgeryDate(record.surgery_date ?? "");
+          setStage(record.pathological_stage ?? ""); setMargin(record.margin_status ?? "");
+          setMmr(record.mismatch_repair_status ?? ""); setTreatment(record.current_treatment ?? "");
+          setSymptoms(record.symptoms.join("、")); setProvince(record.province ?? "");
+          setCity(record.city ?? ""); setCrossProvince(Boolean(record.accepts_cross_province_care));
+          setSaveConsent(Boolean(record.consent_to_store)); setShowProfile(true);
+          setRecordStatus("已从服务器恢复本次会话保存的档案。");
+        }
+        if (reminderResponse.ok) setReminders(await reminderResponse.json() as PatientReminder[]);
+      } catch { setRecordStatus("暂时无法恢复已保存档案；本地访问凭证仍保留。"); }
+    }
+    void restoreSession();
   }, [patientAccess]);
 
   function profile(): Profile {
@@ -295,7 +335,7 @@ export function App() {
           <label htmlFor="question">输入一个用于了解信息或准备复诊的问题</label>
           <textarea id="question" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="例如：复诊时需要准备哪些资料？" />
           <button onClick={askQuestion} disabled={loading || !question.trim()}>检索已审核证据</button>
-          {answer && <div className="answer"><h3>循证导航结果</h3><p>{answer.answer}</p>{answer.citations.length > 0 ? <ol>{answer.citations.map((citation, index) => <li key={`${citation.title}-${index}`}><strong>{citation.title}</strong>{citation.version && ` · ${citation.version}`}{citation.page_start && ` · 第 ${citation.page_start} 页`}</li>)}</ol> : <div className="empty-evidence">当前没有足够的已审核证据，系统已安全拒答。</div>}</div>}
+          {answer && <div className="answer"><h3>循证导航结果</h3><p>{answer.answer}</p>{answer.citations.length > 0 ? <ol className="citation-list">{answer.citations.map((citation) => <li key={citation.source_id}><div><span>{evidenceNames[citation.evidence_type] ?? citation.evidence_type}</span><strong>{citation.public_url ? <a href={citation.public_url} target="_blank" rel="noreferrer">{citation.title}</a> : citation.title}</strong><small>{citation.version && `${citation.version} · `}{citationLocator(citation)} · 已审核</small></div>{citation.excerpt && <blockquote>{citation.excerpt}</blockquote>}</li>)}</ol> : <div className="empty-evidence">当前没有足够的已审核证据，系统已安全拒答。</div>}{answer.limitations.length > 0 && <div className="answer-limitations"><strong>仍需注意</strong><ul>{answer.limitations.map((item) => <li key={item}>{item}</li>)}</ul></div>}</div>}
         </div>
       </section>
 
