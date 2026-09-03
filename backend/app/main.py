@@ -496,11 +496,25 @@ def create_navigation_plan(patient: PatientProfile) -> PatientNavigationPlan:
 def ask_navigation_question(request: QuestionRequest) -> NavigationAnswer:
     decision = classify_question(request.question, request.patient.symptoms)
     assessment = assess_journey(request.patient)
+    audit_payload: dict[str, object] = {
+        "question_sha256": hashlib.sha256(request.question.encode("utf-8")).hexdigest(),
+        "question_length": len(request.question),
+    }
     if not decision.allowed:
+        database.log_event(
+            "navigation_blocked",
+            request.patient.patient_id,
+            {**audit_payload, "category": decision.category},
+        )
         raise HTTPException(status_code=422, detail={"category": decision.category, "message": decision.message})
     rows = retrieve(database, request.question, request.patient.cancer_type.value)
     citations = [citation_from_row(row) for row in rows]
     if not citations:
+        database.log_event(
+            "navigation_no_evidence",
+            request.patient.patient_id,
+            {**audit_payload, "cancer_type": request.patient.cancer_type.value},
+        )
         return NavigationAnswer(
             answer="当前经过审核的证据库中没有检索到足以回答这一问题的内容。请补充资料，或把这个问题带给诊疗团队确认。",
             assessment=assessment,
@@ -522,8 +536,7 @@ def ask_navigation_question(request: QuestionRequest) -> NavigationAnswer:
         "navigation_answered",
         request.patient.patient_id,
         {
-            "question_sha256": hashlib.sha256(request.question.encode("utf-8")).hexdigest(),
-            "question_length": len(request.question),
+            **audit_payload,
             "source_ids": [item.source_id for item in citations],
         },
     )

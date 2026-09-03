@@ -69,7 +69,8 @@ def test_patient_record_requires_explicit_storage_consent(tmp_path, monkeypatch)
 
 
 def test_rejects_prescriptive_question(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(main, "database", Database(tmp_path / "api.db"))
+    database = Database(tmp_path / "api.db")
+    monkeypatch.setattr(main, "database", database)
     client = TestClient(main.app)
     response = client.post(
         "/api/v1/navigation/question",
@@ -80,6 +81,13 @@ def test_rejects_prescriptive_question(tmp_path, monkeypatch) -> None:
     )
     assert response.status_code == 422
     assert response.json()["detail"]["category"] == "individual_treatment_instruction"
+    with database.connect() as connection:
+        event = connection.execute(
+            "SELECT event_type, payload_json FROM audit_events ORDER BY event_id DESC LIMIT 1"
+        ).fetchone()
+    assert event["event_type"] == "navigation_blocked"
+    assert "我该吃什么药" not in event["payload_json"]
+    assert "question_sha256" in event["payload_json"]
 
 
 def test_admin_source_registration_requires_key(tmp_path, monkeypatch) -> None:
