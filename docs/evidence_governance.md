@@ -41,6 +41,11 @@ approved while any page still requires OCR, and a PDF without a recorded audit c
 gate. OCR output must still be checked against the rendered page because successful character
 recognition does not establish table order or medical accuracy.
 
+A page that contains only blank space or page furniture may be removed from the unresolved list
+only through the explicit command-line option for a human-verified content-free page. The record
+retains the exact page numbers, reviewer, and rationale, accepts only sparse unresolved OCR output,
+and does not replace the later extraction-quality approval.
+
 Web sources must use a credential-free public HTTPS URL on the standard port. Every redirect and
 the final response URL are revalidated against private, loopback, and reserved network targets.
 Each source retains a content hash and section locator and remains quarantined after ingestion.

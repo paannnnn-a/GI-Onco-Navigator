@@ -17,6 +17,13 @@
   "metadata": {
     "pages": 174,
     "redistribute_original": false,
-    "extraction_audit": {"readable_text_pages": 0, "pages_needing_ocr": 174}
+    "extraction_audit": {"readable_text_pages": 0, "pages_needing_ocr": 174},
+    "validated_local_pipeline_run": {
+      "date": "2026-09-03",
+      "pages": 174,
+      "chunks": 106,
+      "pages_needing_ocr_after_local_ocr": 0,
+      "visually_reviewed_sparse_pages": [4, 17, 20, 56, 122, 157]
+    }
   }
 }

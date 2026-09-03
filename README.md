@@ -58,12 +58,20 @@ Copyright-restricted guidelines and patient materials are not committed to GitHu
 gi-onco audit-pdf /path/to/source.pdf
 gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf
 gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf --ocr
+gi-onco ingest-pdf data/sources/example.json /path/to/source.pdf --ocr \
+  --verified-content-free-page 12 --blank-page-reviewer "Reviewer name" \
+  --blank-page-reason "Rendered page contains only blank space or page furniture"
 gi-onco ingest-docx data/sources/example.json /path/to/source.docx
 gi-onco ingest-transcript data/sources/video.json /path/to/verified-subtitles.srt
 gi-onco ingest-web data/sources/nci-colon-patient-pdq.json
 ```
 
 `audit-pdf` reports extraction quality without storing source text. PDF ingestion records all pages that still require OCR. A PDF cannot pass the extraction-quality gate while any page remains unresolved. Re-ingesting a source invalidates its previous chunks and approvals.
+
+After rendering a genuinely blank or page-furniture-only page, an accountable reviewer may record
+that narrow decision with `--verified-content-free-page`. The command accepts only unresolved pages
+with no more than three extracted characters and requires reviewer identity and rationale. This does
+not approve extraction quality or medical content; the independent publication gates still apply.
 
 Video sources use human-verified UTF-8 SRT or WebVTT subtitles and retain timestamp locators. Public web ingestion accepts only credential-free HTTPS URLs, rejects private and reserved network targets, limits content type and size, and preserves section locators and a content hash. Every newly ingested source remains quarantined.
 

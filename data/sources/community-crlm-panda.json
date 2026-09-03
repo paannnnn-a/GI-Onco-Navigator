@@ -16,6 +16,13 @@
   "tags": ["肝转移", "患者社群", "专家视频线索"],
   "metadata": {
     "ingestion_decision": "metadata_and_link_discovery_only",
-    "reason": "Contains treatment, provider and outcome claims without consistent primary citations; must be verified claim-by-claim before patient-facing use."
+    "reason": "Contains treatment, provider and outcome claims without consistent primary citations; must be verified claim-by-claim before patient-facing use.",
+    "validated_local_pipeline_run": {
+      "date": "2026-09-03",
+      "paragraphs": 84,
+      "chunks": 4,
+      "unresolved_blocks": 0,
+      "visual_render_review": "not_completed_libreoffice_unavailable"
+    }
   }
 }

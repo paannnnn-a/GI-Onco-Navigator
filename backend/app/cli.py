@@ -7,6 +7,7 @@ from pathlib import Path
 
 from backend.app.config import get_settings
 from backend.app.knowledge import (
+    ExtractedPage,
     audit_pdf,
     chunk_pages,
     chunk_transcript,
@@ -28,11 +29,48 @@ def load_manifest(manifest_path: Path) -> dict[str, object]:
     return manifest
 
 
+def verify_content_free_pages(
+    pages: list[ExtractedPage],
+    page_numbers: set[int],
+    reviewer: str | None,
+    reason: str | None,
+) -> dict[str, object] | None:
+    """Record an accountable visual decision for blank or page-furniture-only pages."""
+    if not page_numbers:
+        return None
+    if not reviewer or len(reviewer.strip()) < 2 or not reason or len(reason.strip()) < 5:
+        raise ValueError(
+            "verified content-free pages require --blank-page-reviewer and --blank-page-reason"
+        )
+    by_number = {page.page_number: page for page in pages}
+    invalid = sorted(page_numbers - set(by_number))
+    if invalid:
+        raise ValueError(f"verified content-free page numbers are outside the PDF: {invalid}")
+    ineligible = sorted(
+        number
+        for number in page_numbers
+        if not by_number[number].needs_ocr or len(by_number[number].text.strip()) > 3
+    )
+    if ineligible:
+        raise ValueError(
+            "only unresolved pages with at most three extracted characters can be marked content-free: "
+            f"{ineligible}"
+        )
+    return {
+        "page_numbers": sorted(page_numbers),
+        "reviewer": reviewer.strip(),
+        "reason": reason.strip(),
+    }
+
+
 def ingest_pdf(
     manifest_path: Path,
     pdf_path: Path,
     use_ocr: bool = False,
     target_database: Database | None = None,
+    verified_content_free_pages: set[int] | None = None,
+    blank_page_reviewer: str | None = None,
+    blank_page_reason: str | None = None,
 ) -> dict[str, object]:
     manifest = load_manifest(manifest_path)
     database = target_database or Database(get_settings().sqlite_path)
@@ -40,13 +78,28 @@ def ingest_pdf(
     manifest["sha256"] = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
     pages = extract_pdf_pages(pdf_path, RapidOcrEngine() if use_ocr else None)
     chunks = chunk_pages(pages)
-    unresolved_pages = [page.page_number for page in pages if page.needs_ocr]
+    content_free_review = verify_content_free_pages(
+        pages,
+        verified_content_free_pages or set(),
+        blank_page_reviewer,
+        blank_page_reason,
+    )
+    verified_page_numbers = set(verified_content_free_pages or set())
+    unresolved_pages = [
+        page.page_number
+        for page in pages
+        if page.needs_ocr and page.page_number not in verified_page_numbers
+    ]
     manifest.setdefault("metadata", {})["extraction_audit"] = {
         "pages": len(pages),
         "readable_text_pages": len(pages) - len(unresolved_pages),
         "pages_needing_ocr": len(unresolved_pages),
         "page_numbers_needing_ocr": unresolved_pages,
     }
+    if content_free_review:
+        manifest["metadata"]["extraction_audit"][
+            "human_verified_content_free_pages"
+        ] = content_free_review
     database.add_source(manifest)
     database.reset_source_for_ingestion(str(manifest["source_id"]))
     for chunk in chunks:
@@ -184,6 +237,15 @@ def main() -> None:
     ingest.add_argument("manifest", type=Path)
     ingest.add_argument("pdf", type=Path)
     ingest.add_argument("--ocr", action="store_true", help="run fully local OCR on unreadable pages")
+    ingest.add_argument(
+        "--verified-content-free-page",
+        action="append",
+        type=int,
+        default=[],
+        help="page visually confirmed to contain no source content; repeat for multiple pages",
+    )
+    ingest.add_argument("--blank-page-reviewer")
+    ingest.add_argument("--blank-page-reason")
     audit = subparsers.add_parser(
         "audit-pdf", help="report extraction quality without storing document content"
     )
@@ -200,7 +262,14 @@ def main() -> None:
     if args.command == "ingest-pdf":
         print(
             json.dumps(
-                ingest_pdf(args.manifest, args.pdf, use_ocr=args.ocr),
+                ingest_pdf(
+                    args.manifest,
+                    args.pdf,
+                    use_ocr=args.ocr,
+                    verified_content_free_pages=set(args.verified_content_free_page),
+                    blank_page_reviewer=args.blank_page_reviewer,
+                    blank_page_reason=args.blank_page_reason,
+                ),
                 ensure_ascii=False,
                 indent=2,
             )

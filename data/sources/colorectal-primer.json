@@ -18,6 +18,12 @@
     "pages": 132,
     "redistribute_original": false,
     "extraction_audit": {"readable_text_pages": 0, "pages_needing_ocr": 132},
-    "visible_print_date": "2016-08-22"
+    "visible_print_date": "2016-08-22",
+    "validated_local_pipeline_run": {
+      "date": "2026-09-03",
+      "pages": 132,
+      "chunks": 66,
+      "pages_needing_ocr_after_local_ocr": 0
+    }
   }
 }

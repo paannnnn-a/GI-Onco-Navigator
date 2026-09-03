@@ -3,7 +3,8 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from backend.app.cli import load_manifest
+from backend.app.cli import load_manifest, verify_content_free_pages
+from backend.app.knowledge import ExtractedPage
 
 
 def test_cli_manifest_uses_admin_metadata_contract(tmp_path) -> None:
@@ -47,3 +48,28 @@ def test_cli_manifest_rejects_unsafe_source_identifier(tmp_path, source_id: str)
 
     with pytest.raises(ValidationError):
         load_manifest(path)
+
+
+def test_content_free_page_review_is_accountable_and_narrow() -> None:
+    pages = [
+        ExtractedPage(1, "", "ocr", True),
+        ExtractedPage(2, "42", "ocr", True),
+        ExtractedPage(3, "Real section content", "ocr", False),
+    ]
+
+    review = verify_content_free_pages(
+        pages,
+        {1, 2},
+        "Reviewer A",
+        "Rendered pages contain only blank space and page furniture.",
+    )
+
+    assert review == {
+        "page_numbers": [1, 2],
+        "reviewer": "Reviewer A",
+        "reason": "Rendered pages contain only blank space and page furniture.",
+    }
+    with pytest.raises(ValueError, match="at most three"):
+        verify_content_free_pages(pages, {3}, "Reviewer A", "Visually reviewed page.")
+    with pytest.raises(ValueError, match="require"):
+        verify_content_free_pages(pages, {1}, None, None)
