@@ -2,11 +2,14 @@ import { CheckCircle2, ClipboardCheck, LockKeyhole, RefreshCw, ShieldAlert, Uplo
 import { useState } from "react";
 
 type Dimension = "copyright" | "extraction_quality" | "medical_accuracy" | "patient_readability";
-type ExtractionAudit = { pages?: number; readable_text_pages?: number; pages_needing_ocr?: number; paragraphs?: number; verified_cues?: number; readable_blocks?: number; unresolved_blocks?: number };
+type ExtractionAudit = { pages?: number; readable_text_pages?: number; pages_needing_ocr?: number; paragraphs?: number; verified_cues?: number; readable_blocks?: number; unresolved_blocks?: number; human_verified_content_free_pages?: { page_numbers: number[]; reviewer: string; reason: string } };
 type Source = { source_id: string; title: string; evidence_type: string; review_status: string; version?: string; metadata?: { extraction_audit?: ExtractionAudit } };
 type Review = { dimension: Dimension; decision: "approved" | "rejected"; reviewer: string; reason: string };
 type ReviewState = { source_id: string; review_status: string; required_dimensions: Dimension[]; latest_reviews: Review[] };
-type ChunkPage = { total: number; items: { chunk_id: string; ordinal: number; text: string; page_start?: number; page_end?: number; timestamp_start_seconds?: number; timestamp_end_seconds?: number; section_path: string[]; extraction_method: string; review_status: string; content_hash: string }[] };
+type ChunkPage = { total: number; offset: number; limit: number; items: { chunk_id: string; ordinal: number; text: string; page_start?: number; page_end?: number; timestamp_start_seconds?: number; timestamp_end_seconds?: number; section_path: string[]; extraction_method: string; review_status: string; content_hash: string }[] };
+type LifecycleEvent = { event_id: number; previous_status: string; new_status: string; actor: string; reason: string; created_at: string };
+
+const CHUNK_PAGE_SIZE = 20;
 
 const labels: Record<Dimension, string> = {
   copyright: "Copyright and permission",
@@ -21,6 +24,7 @@ export function Admin() {
   const [selected, setSelected] = useState<Source | null>(null);
   const [state, setState] = useState<ReviewState | null>(null);
   const [chunks, setChunks] = useState<ChunkPage | null>(null);
+  const [lifecycle, setLifecycle] = useState<LifecycleEvent[]>([]);
   const [reviewer, setReviewer] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
@@ -75,15 +79,26 @@ export function Admin() {
   }
 
   async function openSource(source: Source) {
-    setSelected(source); setError("");
+    setSelected(source); setChunks(null); setLifecycle([]); setError("");
+    const sourceId = encodeURIComponent(source.source_id);
     try {
-      const [reviewState, chunkPage] = await Promise.all([
-        api<ReviewState>(`/api/v1/admin/evidence/sources/${source.source_id}/reviews`),
-        api<ChunkPage>(`/api/v1/admin/evidence/sources/${source.source_id}/chunks?limit=20`),
+      const [reviewState, chunkPage, lifecycleEvents] = await Promise.all([
+        api<ReviewState>(`/api/v1/admin/evidence/sources/${sourceId}/reviews`),
+        api<ChunkPage>(`/api/v1/admin/evidence/sources/${sourceId}/chunks?offset=0&limit=${CHUNK_PAGE_SIZE}`),
+        api<LifecycleEvent[]>(`/api/v1/admin/evidence/sources/${sourceId}/lifecycle`),
       ]);
-      setState(reviewState); setChunks(chunkPage);
+      setState(reviewState); setChunks(chunkPage); setLifecycle(lifecycleEvents);
     }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to load review state."); }
+  }
+
+  async function loadChunkPage(offset: number) {
+    if (!selected) return;
+    setBusy(true); setError("");
+    try {
+      setChunks(await api<ChunkPage>(`/api/v1/admin/evidence/sources/${encodeURIComponent(selected.source_id)}/chunks?offset=${Math.max(0, offset)}&limit=${CHUNK_PAGE_SIZE}`));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to load evidence chunks."); }
+    finally { setBusy(false); }
   }
 
   async function submit(dimension: Dimension, decision: "approved" | "rejected") {
@@ -113,6 +128,7 @@ export function Admin() {
       });
       setState((current) => current ? { ...current, review_status: status } : current);
       setSources((items) => items.map((item) => item.source_id === selected.source_id ? { ...item, review_status: status } : item));
+      setLifecycle(await api<LifecycleEvent[]>(`/api/v1/admin/evidence/sources/${encodeURIComponent(selected.source_id)}/lifecycle`));
       setReason("");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Status change failed."); }
     finally { setBusy(false); }
@@ -145,7 +161,9 @@ export function Admin() {
           {extractionAudit && <section className="extraction-audit" data-complete={unresolved === 0}><div><b>Extraction completeness</b><strong>{unresolved === 0 ? "Ready for human sampling" : `${unresolved} units remain unresolved`}</strong></div><p>{extractionAudit.pages !== undefined ? `${extractionAudit.pages} pages total; ${extractionAudit.readable_text_pages ?? 0} have readable text.` : extractionAudit.paragraphs !== undefined ? `${extractionAudit.paragraphs} non-empty paragraphs extracted.` : `${extractionAudit.verified_cues ?? extractionAudit.readable_blocks ?? 0} content units checked.`}{unresolved > 0 && " Complete OCR and re-ingest before approving extraction quality."}</p></section>}
           <div className="lifecycle-actions"><span>Emergency source control</span><button onClick={() => changeLifecycle("quarantined")} disabled={busy}>Re-quarantine</button><button onClick={() => changeLifecycle("outdated")} disabled={busy}>Mark outdated</button><button className="reject" onClick={() => changeLifecycle("withdrawn")} disabled={busy}>Withdraw</button></div>
           <div className="reviewer-fields"><label>Reviewer<input value={reviewer} onChange={(event) => setReviewer(event.target.value)} placeholder="Real name or accountable team identifier" /></label><label>Review rationale<textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Record scope, findings, and decision rationale" /></label></div>
-          <section className="chunk-preview"><h3>Extracted-content sampling <small>{chunks?.total ?? 0} chunks; showing the first 20</small></h3>{chunks?.items.length === 0 && <p>This source has no reviewable chunks and cannot be approved from its title alone.</p>}{chunks?.items.map((chunk) => <details key={chunk.chunk_id}><summary><span>Chunk {chunk.ordinal + 1}</span><small>{chunk.page_start ? `Page ${chunk.page_start}${chunk.page_end && chunk.page_end !== chunk.page_start ? `–${chunk.page_end}` : ""}` : chunk.timestamp_start_seconds !== undefined ? `${chunk.timestamp_start_seconds}–${chunk.timestamp_end_seconds ?? "?"} seconds` : chunk.section_path.join(" / ") || "No locator"} · {chunk.extraction_method}</small></summary><p>{chunk.text}</p><code>SHA-256 {chunk.content_hash}</code></details>)}</section>
+          {extractionAudit?.human_verified_content_free_pages && <section className="blank-page-review"><b>Human-verified content-free pages</b><p>Pages {extractionAudit.human_verified_content_free_pages.page_numbers.join(", ")} · {extractionAudit.human_verified_content_free_pages.reviewer}</p><small>{extractionAudit.human_verified_content_free_pages.reason}</small></section>}
+          <section className="chunk-preview"><h3>Extracted-content sampling <small>{chunks?.total ?? 0} chunks{chunks && chunks.total > 0 ? `; showing ${chunks.offset + 1}–${Math.min(chunks.offset + chunks.items.length, chunks.total)}` : ""}</small></h3>{chunks?.items.length === 0 && <p>This source has no reviewable chunks and cannot be approved from its title alone.</p>}{chunks?.items.map((chunk) => <details key={chunk.chunk_id}><summary><span>Chunk {chunk.ordinal + 1}</span><small>{chunk.page_start ? `Page ${chunk.page_start}${chunk.page_end && chunk.page_end !== chunk.page_start ? `–${chunk.page_end}` : ""}` : chunk.timestamp_start_seconds !== undefined ? `${chunk.timestamp_start_seconds}–${chunk.timestamp_end_seconds ?? "?"} seconds` : chunk.section_path.join(" / ") || "No locator"} · {chunk.extraction_method}</small></summary><p>{chunk.text}</p><code>SHA-256 {chunk.content_hash}</code></details>)}{chunks && chunks.total > chunks.limit && <div className="chunk-pagination"><button onClick={() => loadChunkPage(chunks.offset - chunks.limit)} disabled={busy || chunks.offset === 0}>Previous</button><span>Page {Math.floor(chunks.offset / chunks.limit) + 1} of {Math.ceil(chunks.total / chunks.limit)}</span><button onClick={() => loadChunkPage(chunks.offset + chunks.limit)} disabled={busy || chunks.offset + chunks.items.length >= chunks.total}>Next</button></div>}</section>
+          <section className="lifecycle-history"><h3>Source lifecycle history</h3>{lifecycle.length === 0 ? <p>No lifecycle change has been recorded.</p> : <ol>{lifecycle.map((event) => <li key={event.event_id}><b>{event.previous_status} → {event.new_status}</b><span>{event.actor} · {new Date(event.created_at).toLocaleString("en")}</span><p>{event.reason}</p></li>)}</ol>}</section>
           <div className="review-gates">{state.required_dimensions.map((dimension) => { const item = latest.get(dimension); return <article key={dimension}><div>{item?.decision === "approved" ? <CheckCircle2 /> : <ShieldAlert />}<span><b>{labels[dimension]}</b><small>{item ? `${item.reviewer}: ${item.reason}` : "Not reviewed"}</small></span></div><div><button onClick={() => submit(dimension, "approved")} disabled={busy}>Approve</button><button className="reject" onClick={() => submit(dimension, "rejected")} disabled={busy}>Reject</button></div></article>; })}</div>
         </>}
       </section>

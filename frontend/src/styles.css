@@ -55,6 +55,18 @@
 .chunk-preview summary small { color: #6b7d76; font-weight: 500; text-align: right; }
 .chunk-preview details p { white-space: pre-wrap; line-height: 1.65; max-height: 260px; overflow: auto; }
 .chunk-preview code { display: block; overflow-wrap: anywhere; color: #6b7d76; font-size: .72rem; }
+.chunk-pagination { display: flex; justify-content: center; align-items: center; gap: .8rem; padding-top: .9rem; border-top: 1px solid #dce5e0; }
+.chunk-pagination button { border: 1px solid #bfd0c8; border-radius: 8px; padding: .5rem .8rem; background: white; color: #23483b; font-weight: 700; cursor: pointer; }
+.chunk-pagination button:disabled { opacity: .45; cursor: not-allowed; }
+.chunk-pagination span { color: #60736b; font-size: .8rem; }
+.blank-page-review, .lifecycle-history { margin: 1rem 0; padding: 1rem; border: 1px solid #dce5e0; border-radius: 12px; background: #fbfdfc; }
+.blank-page-review p, .blank-page-review small { color: #60736b; }
+.blank-page-review p { margin: .4rem 0; }
+.lifecycle-history h3 { margin-top: 0; }
+.lifecycle-history > p { color: #6b7d76; margin-bottom: 0; }
+.lifecycle-history ol { display: grid; gap: .7rem; margin: 0; padding-left: 1.3rem; }
+.lifecycle-history li span { display: block; margin-top: .2rem; color: #6b7d76; font-size: .78rem; }
+.lifecycle-history li p { margin: .3rem 0 0; color: #52645d; }
 .review-gates { display: grid; gap: .7rem; }
 .review-gates article { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem; border: 1px solid #dde6e1; border-radius: 12px; }
 .review-gates article > div { display: flex; gap: .7rem; align-items: center; }
