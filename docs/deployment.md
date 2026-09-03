@@ -11,8 +11,10 @@ capabilities, and persists application data in a named volume.
 ## Start a production-like deployment
 
 1. Copy `.env.production.example` to a file kept outside version control.
-2. Generate independent high-entropy values for `SECRET_KEY` and `ADMIN_API_KEY`.
-3. Set `ALLOWED_ORIGINS` to the exact public HTTPS origin; do not use `*`.
+2. Generate independent high-entropy values of at least 32 characters for `SECRET_KEY` and
+   `ADMIN_API_KEY`; the application rejects placeholders, short values, and a shared value.
+3. Set `ALLOWED_ORIGINS` to one or more comma-separated exact public HTTPS origins. The application
+   rejects HTTP, localhost, credentials, paths, wildcards, queries, and fragments in production.
 4. Place a TLS reverse proxy or managed HTTPS load balancer in front of `127.0.0.1:8080`.
 5. Run `docker compose --env-file <secure-env-file> -f docker-compose.production.yml up -d --build`.
 6. Verify `/health/live`, `/health/ready`, patient workflows, admin authentication, backups, restore,
