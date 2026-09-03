@@ -1,5 +1,17 @@
-from backend.app.services.retrieval import retrieve
+from backend.app.services.retrieval import citation_from_row, retrieve
 from backend.app.storage import REQUIRED_REVIEW_DIMENSIONS, Database
+
+
+def test_citation_preserves_video_timestamp_at_zero_seconds() -> None:
+    citation = citation_from_row(
+        {
+            "source_id": "video", "title": "合成视频", "evidence_type": "expert_video",
+            "version": "1", "page_start": None, "page_end": None,
+            "timestamp_start_seconds": 0, "text": "片头即出现的合成测试内容。",
+            "public_url": None, "section_path_json": "[]", "review_status": "approved",
+        }
+    )
+    assert citation.timestamp_start_seconds == 0
 
 
 def _approved_fixture(database: Database, source_id: str, text: str, evidence_type: str = "patient_education") -> None:

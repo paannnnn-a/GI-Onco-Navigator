@@ -110,7 +110,9 @@ def citation_from_row(row: dict[str, object]) -> Citation:
         page_start=int(row["page_start"]) if row.get("page_start") else None,
         page_end=int(row["page_end"]) if row.get("page_end") else None,
         timestamp_start_seconds=(
-            int(row["timestamp_start_seconds"]) if row.get("timestamp_start_seconds") else None
+            int(row["timestamp_start_seconds"])
+            if row.get("timestamp_start_seconds") is not None
+            else None
         ),
         excerpt=str(row["text"])[:500],
         public_url=str(row["public_url"]) if row.get("public_url") else None,
