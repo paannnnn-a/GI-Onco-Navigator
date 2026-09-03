@@ -103,6 +103,8 @@ docs/          产品范围、数据库设计与证据治理规范
 
 详细说明见 [项目设计](docs/project_design.md)、[数据库设计](docs/database_design.md)、[证据治理](docs/evidence_governance.md)、[机构信息导航](docs/facility_navigation.md)、[评测说明](docs/benchmark.md)、[用户资料审查](docs/material_review.md) 和 [外部权威来源](docs/external_sources.md)。
 
+面向公网部署前必须阅读 [部署边界与检查清单](docs/deployment.md)。默认 Compose 只用于本地评估；生产模板不会代替隐私、安全、临床和合规审查。
+
 ## 医疗安全与隐私
 
 - 不输出具体患者的药物、方案、剂量或停药指令。

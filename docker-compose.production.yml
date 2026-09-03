@@ -1,0 +1,53 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      DATABASE_URL: sqlite:////app/data/gi_onco.db
+      SECRET_KEY: ${SECRET_KEY:?Set a unique SECRET_KEY}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:?Set a unique ADMIN_API_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?Set the public HTTPS origin}
+      LLM_PROVIDER: disabled
+    volumes:
+      - gi_onco_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:80"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - NET_BIND_SERVICE
+      - SETGID
+      - SETUID
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  gi_onco_data:
