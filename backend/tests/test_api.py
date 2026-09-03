@@ -1,4 +1,6 @@
 import json
+import zipfile
+from io import BytesIO
 
 from fastapi.testclient import TestClient
 
@@ -159,6 +161,25 @@ def test_admin_upload_rejects_unsupported_or_disguised_file(tmp_path, monkeypatc
         headers=headers,
     )
     assert disguised.status_code == 422
+
+    monkeypatch.setattr(main, "MAX_DOCX_UNCOMPRESSED_BYTES", 10)
+    oversized_docx = BytesIO()
+    with zipfile.ZipFile(oversized_docx, "w") as archive:
+        archive.writestr("[Content_Types].xml", "types")
+        archive.writestr("word/document.xml", b"0" * 20)
+    archive_bomb = client.post(
+        "/api/v1/admin/evidence/uploads",
+        data={"manifest_json": manifest},
+        files={
+            "file": (
+                "oversized.docx", oversized_docx.getvalue(),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+        headers=headers,
+    )
+    assert archive_bomb.status_code == 422
+    assert "safety limit" in archive_bomb.json()["detail"]
 
 
 def test_admin_upload_cannot_replace_existing_source(tmp_path, monkeypatch) -> None:

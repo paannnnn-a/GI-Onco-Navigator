@@ -4,7 +4,9 @@ import logging
 import secrets
 import tempfile
 import time
+import zipfile
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
@@ -265,6 +267,25 @@ def create_evidence_source(source: EvidenceSourceCreate) -> dict[str, str]:
 
 MAX_EVIDENCE_UPLOAD_BYTES = 25 * 1024 * 1024
 ALLOWED_EVIDENCE_SUFFIXES = {".pdf", ".docx", ".srt", ".vtt"}
+MAX_DOCX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
+MAX_DOCX_ARCHIVE_ENTRIES = 10_000
+
+
+def validate_docx_archive(payload: bytes | bytearray) -> None:
+    try:
+        with zipfile.ZipFile(BytesIO(payload)) as archive:
+            entries = archive.infolist()
+            names = {item.filename for item in entries}
+            if len(entries) > MAX_DOCX_ARCHIVE_ENTRIES:
+                raise ValueError("DOCX archive contains too many entries")
+            if sum(item.file_size for item in entries) > MAX_DOCX_UNCOMPRESSED_BYTES:
+                raise ValueError("DOCX archive expands beyond the safety limit")
+            if any(item.flag_bits & 0x1 for item in entries):
+                raise ValueError("encrypted DOCX archives are not supported")
+            if not {"[Content_Types].xml", "word/document.xml"}.issubset(names):
+                raise ValueError("DOCX archive is missing required Word document parts")
+    except zipfile.BadZipFile as exc:
+        raise ValueError("invalid DOCX archive") from exc
 
 
 @app.post(
@@ -302,6 +323,11 @@ async def upload_evidence_source(
         raise HTTPException(status_code=422, detail="file content is not a PDF")
     if suffix == ".docx" and not payload.startswith(b"PK"):
         raise HTTPException(status_code=422, detail="file content is not a DOCX archive")
+    if suffix == ".docx":
+        try:
+            validate_docx_archive(payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     manifest = source.model_dump(mode="json")
     manifest["review_status"] = "quarantined"
