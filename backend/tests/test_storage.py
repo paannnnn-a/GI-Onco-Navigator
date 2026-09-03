@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from backend.app.schemas import CancerType, PatientProfile
 from backend.app.storage import Database
@@ -21,11 +21,41 @@ def test_delete_patient_record(tmp_path) -> None:
     database = Database(tmp_path / "delete.db")
     profile = PatientProfile(patient_id="delete-me", cancer_type=CancerType.RECTAL)
     database.save_patient(profile)
+    database.add_reminder(
+        {
+            "reminder_id": "delete-reminder",
+            "patient_id": "delete-me",
+            "title": "Follow-up visit",
+            "due_at": datetime(2026, 9, 10, tzinfo=UTC).isoformat(),
+            "source_note": "Appointment notice",
+            "status": "pending",
+        }
+    )
     database.log_event("patient_saved", "delete-me", {"test": True})
     assert database.count_audit_events("delete-me") == 1
     assert database.delete_patient("delete-me") is True
     assert database.get_patient("delete-me") is None
+    assert database.list_reminders("delete-me") == []
     assert database.count_audit_events("delete-me") == 0
+
+
+def test_foreign_keys_are_enforced_on_every_connection(tmp_path) -> None:
+    database = Database(tmp_path / "foreign-keys.db")
+    try:
+        database.add_reminder(
+            {
+                "reminder_id": "orphan",
+                "patient_id": "missing-patient",
+                "title": "Invalid reminder",
+                "due_at": datetime(2026, 9, 10, tzinfo=UTC).isoformat(),
+                "source_note": "Synthetic test",
+                "status": "pending",
+            }
+        )
+    except KeyError:
+        pass
+    else:
+        raise AssertionError("an orphan reminder must violate the patient foreign key")
 
 
 def test_reingestion_invalidates_prior_chunks_and_reviews(tmp_path) -> None:
