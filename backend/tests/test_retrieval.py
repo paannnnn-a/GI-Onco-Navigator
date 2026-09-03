@@ -14,7 +14,13 @@ def test_citation_preserves_video_timestamp_at_zero_seconds() -> None:
     assert citation.timestamp_start_seconds == 0
 
 
-def _approved_fixture(database: Database, source_id: str, text: str, evidence_type: str = "patient_education") -> None:
+def _approved_fixture(
+    database: Database,
+    source_id: str,
+    text: str,
+    evidence_type: str = "patient_education",
+    tags: list[str] | None = None,
+) -> None:
     database.add_source(
         {
             "source_id": source_id, "title": source_id, "evidence_type": evidence_type,
@@ -29,7 +35,7 @@ def _approved_fixture(database: Database, source_id: str, text: str, evidence_ty
             "chunk_id": f"{source_id}:0", "source_id": source_id, "ordinal": 0, "text": text,
             "page_start": 1, "page_end": 1, "timestamp_start_seconds": None,
             "timestamp_end_seconds": None, "section_path": [], "cancer_types": ["colon"],
-            "tags": [], "extraction_method": "test", "review_status": "quarantined",
+            "tags": tags or [], "extraction_method": "test", "review_status": "quarantined",
             "content_hash": source_id,
         }
     )
@@ -58,3 +64,31 @@ def test_hybrid_retrieval_still_excludes_quarantined_content(tmp_path) -> None:
         }
     )
     assert retrieve(database, "任何问题", "colon") == []
+
+
+def test_retrieval_reranks_within_evidence_class_by_journey_phase(tmp_path) -> None:
+    database = Database(tmp_path / "phase.db")
+    shared = "Use this information to prepare questions for the next clinical visit."
+    _approved_fixture(database, "recovery", shared, tags=["wound", "discharge", "recovery"])
+    _approved_fixture(database, "surveillance", shared, tags=["follow-up", "surveillance", "records"])
+
+    recovery = retrieve(
+        database, "What should I prepare?", "colon", limit=2,
+        journey_status="postoperative_recovery",
+    )
+    surveillance = retrieve(
+        database, "What should I prepare?", "colon", limit=2,
+        journey_status="surveillance",
+    )
+
+    assert recovery[0]["source_id"] == "recovery"
+    assert surveillance[0]["source_id"] == "surveillance"
+    assert float(recovery[0]["phase_relevance"]) > float(recovery[1]["phase_relevance"])
+
+
+def test_unknown_journey_status_does_not_break_retrieval(tmp_path) -> None:
+    database = Database(tmp_path / "unknown-phase.db")
+    _approved_fixture(database, "source", "Follow-up visit preparation and records.")
+    rows = retrieve(database, "follow-up preparation", "colon", journey_status="not-a-status")
+    assert rows[0]["source_id"] == "source"
+    assert rows[0]["phase_relevance"] == 0

@@ -522,7 +522,12 @@ def ask_navigation_question(request: QuestionRequest) -> NavigationAnswer:
             {**audit_payload, "category": decision.category},
         )
         raise HTTPException(status_code=422, detail={"category": decision.category, "message": decision.message})
-    rows = retrieve(database, request.question, request.patient.cancer_type.value)
+    rows = retrieve(
+        database,
+        request.question,
+        request.patient.cancer_type.value,
+        journey_status=assessment.current_status.value,
+    )
     citations = [citation_from_row(row) for row in rows]
     if not citations:
         database.log_event(

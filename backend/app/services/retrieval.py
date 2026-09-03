@@ -5,7 +5,7 @@ import re
 from collections import Counter
 from math import sqrt
 
-from backend.app.schemas import Citation, EvidenceType
+from backend.app.schemas import Citation, EvidenceType, TreatmentStatus
 from backend.app.storage import Database, evidence_type_priority
 
 CONCEPT_ALIASES = {
@@ -17,6 +17,40 @@ CONCEPT_ALIASES = {
     "吃饭": "饮食营养",
     "食谱": "饮食营养",
     "锻炼": "运动活动",
+}
+
+# These vocabularies are navigation topics, not treatment rules. They provide a
+# small, auditable reranking signal while the evidence hierarchy remains the
+# primary ordering constraint.
+PHASE_TOPICS: dict[TreatmentStatus, str] = {
+    TreatmentStatus.POSTOPERATIVE_RECOVERY: (
+        "early postoperative recovery discharge wound stoma pain symptoms nutrition "
+        "hydration activity 术后恢复 出院 伤口 造口 疼痛 症状 营养 饮水 活动"
+    ),
+    TreatmentStatus.PATHOLOGY_REVIEW: (
+        "pathology report operative note margin lymph node stage MMR MSI molecular test "
+        "病理报告 手术记录 切缘 淋巴结 分期 错配修复 微卫星 分子检测"
+    ),
+    TreatmentStatus.ADJUVANT_EVALUATION: (
+        "postoperative evaluation pathology stage molecular test multidisciplinary visit "
+        "questions discussion preparation 术后评估 病理 分期 分子检测 多学科 复诊 问题准备"
+    ),
+    TreatmentStatus.ACTIVE_TREATMENT: (
+        "treatment monitoring adverse effects symptom log laboratory test contact care team "
+        "治疗监测 不良反应 症状记录 实验室检查 联系医疗团队"
+    ),
+    TreatmentStatus.SURVEILLANCE: (
+        "surveillance follow-up recurrence monitoring appointment records long-term health "
+        "随访 复查 复诊 复发监测 就诊记录 长期健康"
+    ),
+    TreatmentStatus.REHABILITATION: (
+        "rehabilitation recovery nutrition activity function quality of life psychosocial support "
+        "康复 恢复 营养 活动 功能 生活质量 心理支持"
+    ),
+    TreatmentStatus.UNKNOWN: (
+        "surgery date pathology report current treatment medical records visit preparation "
+        "手术日期 病理报告 当前治疗 医疗记录 就诊准备"
+    ),
 }
 
 
@@ -44,6 +78,18 @@ def cosine_similarity(left: Counter[str], right: Counter[str]) -> float:
     return dot / (norm_left * norm_right) if norm_left and norm_right else 0.0
 
 
+def phase_relevance(row: dict[str, object], journey_status: str | None) -> float:
+    if not journey_status:
+        return 0.0
+    try:
+        status = TreatmentStatus(journey_status)
+    except ValueError:
+        return 0.0
+    tags = " ".join(json.loads(str(row.get("tags_json") or "[]")))
+    candidate = semantic_features(f"{row.get('text', '')} {tags}")
+    return cosine_similarity(semantic_features(PHASE_TOPICS[status]), candidate)
+
+
 def to_fts_query(question: str) -> str:
     latin_terms = re.findall(r"[A-Za-z0-9_.+-]+", question)
     cjk_runs = re.findall(r"[\u4e00-\u9fff]+", question)
@@ -58,6 +104,7 @@ def retrieve(
     cancer_type: str | None,
     limit: int = 6,
     approved_only: bool = True,
+    journey_status: str | None = None,
 ) -> list[dict[str, object]]:
     lexical_rows = database.search(
         to_fts_query(normalize_concepts(question)),
@@ -91,11 +138,12 @@ def retrieve(
             1 / (60 + semantic_rank[chunk_id]) if chunk_id in semantic_rank else 0
         )
         row["retrieval_score"] = rrf + similarity * 0.1
+        row["phase_relevance"] = phase_relevance(row, journey_status)
         fused.append(row)
     fused.sort(
         key=lambda row: (
             evidence_type_priority(str(row["evidence_type"])),
-            -float(row["retrieval_score"]),
+            -(float(row["retrieval_score"]) + float(row["phase_relevance"]) * 0.05),
         )
     )
     return fused[:limit]

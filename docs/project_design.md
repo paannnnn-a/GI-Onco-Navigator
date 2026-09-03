@@ -13,7 +13,7 @@ Patient profile
   -> field and consistency validation
   -> postoperative journey state machine
   -> emergency and prescriptive-request safety routing
-  -> cancer- and phase-aware retrieval scope
+  -> cancer filtering and phase-aware evidence reranking
   -> approved evidence only
   -> evidence hierarchy and reranking
   -> page, timestamp, or section citation validation
@@ -32,6 +32,8 @@ A responsive React and TypeScript web application provides cancer selection, a s
 ### Application API
 
 FastAPI exposes profile, journey, navigation, evidence, facility, and administrative endpoints. The community build uses SQLite and FTS5. Interfaces are separated so a production operator can migrate storage and retrieval without bypassing review or citation controls.
+
+Retrieval filters reviewed evidence by cancer type, combines lexical and local semantic matching, and applies a bounded journey-phase relevance signal within each evidence class. Phase relevance changes ordering rather than excluding passages; guideline and source-review priority remains dominant. This mechanism supports navigation and visit preparation only and does not infer a treatment plan.
 
 ### Patient journey
 
