@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from backend.app.auth import InvalidPatientToken, issue_patient_token, verify_patient_token
 from backend.app.cli import ingest_docx, ingest_pdf, ingest_transcript
 from backend.app.config import get_settings
-from backend.app.observability import Metrics
+from backend.app.observability import Metrics, safe_request_id
 from backend.app.schemas import (
     EvidenceChunkPage,
     EvidenceChunkPreview,
@@ -76,17 +76,24 @@ app.add_middleware(
 
 @app.middleware("http")
 async def observe_requests(request: Request, call_next):
-    request_id = request.headers.get("X-Request-ID", str(uuid4()))[:128]
+    request_id = safe_request_id(request.headers.get("X-Request-ID"))
     started = time.perf_counter()
     try:
         response = await call_next(request)
     except Exception:
-        metrics.record(request.method, request.url.path, 500)
-        logger.exception("request_failed method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
+        route = request.scope.get("route")
+        route_path = getattr(route, "path", "<unresolved>")
+        metrics.record(request.method, route_path, 500)
+        logger.exception(
+            "request_failed method=%s route=%s request_id=%s",
+            request.method,
+            route_path,
+            request_id,
+        )
         raise
     duration_ms = round((time.perf_counter() - started) * 1000, 1)
     route = request.scope.get("route")
-    route_path = getattr(route, "path", request.url.path)
+    route_path = getattr(route, "path", "<unmatched>")
     metrics.record(request.method, route_path, response.status_code)
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"

@@ -73,6 +73,11 @@ Docker Compose starts the API, static web application, and persistent data volum
 
 The application emits request IDs, privacy-conscious access logs, liveness, readiness, and Prometheus metrics. A production operator must additionally provide HTTPS, managed secrets, strong organizational identity, least privilege, encrypted backup and restoration, centralized logs, vulnerability management, privacy impact assessment, and applicable medical and data compliance review.
 
+Observability labels use declared route templates rather than raw request paths, so patient IDs and
+arbitrary unmatched path content do not enter metrics. Caller-supplied request IDs are accepted
+only when they match a short opaque-token format; other values are replaced before logging or
+reflection.
+
 ## Evaluation
 
 The benchmark uses synthetic patients only. It measures journey-state classification, safety routing, retrieval Recall@K, citation validity, refusal accuracy, and dangerous-advice rate. Clinical validation and public release of a medical evaluation set require independent expert review.
