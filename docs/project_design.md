@@ -39,6 +39,8 @@ Retrieval filters reviewed evidence by cancer type, combines lexical and local s
 
 States include early recovery, pathology preparation, adjuvant-treatment evaluation, active treatment, surveillance, rehabilitation, and unknown. The state machine organizes information; it is not a clinical diagnosis or treatment decision.
 
+Each state adds a distinct visit-preparation topic to the patient navigation plan. The prompts organize records, observations, uncertainties, and questions for the care team; they do not calculate dates, select treatment, or prescribe an action.
+
 ### Knowledge and retrieval
 
 Sources retain version, date, cancer scope, audience, copyright state, review state, supersession, and checksum. Chunks retain a page, timestamp, or section locator, extraction method, and content hash. Retrieval combines SQLite FTS5 keyword recall with local Chinese concept and character features, fuses rankings with reciprocal rank fusion, and applies evidence-type priority. A validated medical embedding service may replace the local similarity layer, but cannot bypass approval and citation gates.

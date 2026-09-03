@@ -1,10 +1,92 @@
-from backend.app.schemas import NavigationTopic, PatientNavigationPlan, PatientProfile
+from backend.app.schemas import (
+    NavigationTopic,
+    PatientNavigationPlan,
+    PatientProfile,
+    TreatmentStatus,
+)
 from backend.app.services.journey import assess_journey
+
+PHASE_NAVIGATION: dict[TreatmentStatus, tuple[str, str, str, list[str]]] = {
+    TreatmentStatus.POSTOPERATIVE_RECOVERY: (
+        "early_recovery",
+        "Early recovery check-in",
+        "Organize discharge instructions, recovery observations, and questions that may need earlier clinical review.",
+        [
+            "Which recovery changes should I record, and who should I contact if they occur?",
+            "Do my discharge instructions identify wound, stoma, eating, hydration, and activity questions for this stage?",
+        ],
+    ),
+    TreatmentStatus.PATHOLOGY_REVIEW: (
+        "pathology_review",
+        "Pathology review preparation",
+        "Identify missing pathology and operative details before discussing the postoperative assessment.",
+        [
+            "Which parts of my pathology report are still missing or need clarification?",
+            "Are the stage, margins, lymph-node findings, and relevant molecular-test results documented?",
+        ],
+    ),
+    TreatmentStatus.ADJUVANT_EVALUATION: (
+        "postoperative_evaluation",
+        "Postoperative evaluation visit",
+        "Prepare the complete record and questions needed for a clinician-led discussion of possible next steps.",
+        [
+            "Is my surgical, pathology, and molecular-testing record complete for this evaluation?",
+            "What benefits, risks, uncertainties, and alternatives should I ask the treating team to explain?",
+        ],
+    ),
+    TreatmentStatus.ACTIVE_TREATMENT: (
+        "treatment_monitoring",
+        "Treatment monitoring preparation",
+        "Structure clinician-confirmed treatment information, symptoms, tests, and contact questions without changing treatment.",
+        [
+            "Which symptoms, measurements, and test results should I bring to the next treatment visit?",
+            "Who should I contact about a new or worsening problem, and what information should I provide?",
+        ],
+    ),
+    TreatmentStatus.SURVEILLANCE: (
+        "surveillance_preparation",
+        "Surveillance preparation",
+        "Keep clinician-provided follow-up dates, completed tests, and interval health changes organized.",
+        [
+            "Which follow-up items has my clinical team scheduled, and where are their results recorded?",
+            "Which interval changes should I document and discuss at the next visit?",
+        ],
+    ),
+    TreatmentStatus.REHABILITATION: (
+        "rehabilitation",
+        "Rehabilitation discussion",
+        "Organize function, nutrition, activity, and quality-of-life concerns for professional assessment.",
+        [
+            "Which recovery goals and functional changes should I discuss with the care team?",
+            "Would a dietitian, rehabilitation, stoma-care, or psychosocial assessment be relevant to my recorded concerns?",
+        ],
+    ),
+    TreatmentStatus.UNKNOWN: (
+        "stage_clarification",
+        "Clarify the current phase",
+        "Complete the minimum timeline and clinical record before relying on phase-specific navigation.",
+        [
+            "What was my surgery date, and what current treatment or follow-up plan has my clinician recorded?",
+            "Which operative, discharge, and pathology records should I obtain before the next visit?",
+        ],
+    ),
+}
+
+
+def phase_navigation_topic(status: TreatmentStatus) -> NavigationTopic:
+    category, title, purpose, questions = PHASE_NAVIGATION[status]
+    return NavigationTopic(
+        category=category,
+        title=title,
+        purpose=purpose,
+        suggested_questions=questions,
+    )
 
 
 def build_navigation_plan(profile: PatientProfile) -> PatientNavigationPlan:
     assessment = assess_journey(profile)
     topics = [
+        phase_navigation_topic(assessment.current_status),
         NavigationTopic(
             category="records",
             title="Pathology and surgical records",

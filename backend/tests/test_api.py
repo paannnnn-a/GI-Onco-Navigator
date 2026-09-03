@@ -244,6 +244,22 @@ def test_navigation_plan_includes_symptom_topic() -> None:
     assert response.json()["topics"][0]["category"] == "symptoms"
 
 
+def test_navigation_plan_leads_with_current_journey_phase() -> None:
+    response = TestClient(main.app).post(
+        "/api/v1/navigation/plan",
+        json={
+            "patient_id": "active-treatment-plan",
+            "cancer_type": "colon",
+            "current_treatment": "Clinician-recorded postoperative treatment",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["assessment"]["current_status"] == "active_treatment"
+    assert payload["topics"][0]["category"] == "treatment_monitoring"
+    assert "without changing treatment" in payload["topics"][0]["purpose"]
+
+
 def test_evidence_requires_all_review_gates_before_patient_search(tmp_path, monkeypatch) -> None:
     database = Database(tmp_path / "review.db")
     monkeypatch.setattr(main, "database", database)

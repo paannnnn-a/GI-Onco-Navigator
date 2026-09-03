@@ -12,7 +12,7 @@ GI-Onco Navigator connects a structured patient profile, a postoperative journey
 - PDF, DOCX, verified subtitle, and restricted public-web ingestion
 - Local OCR, corruption detection, page-level extraction audits, and content hashing
 - Evidence versioning, copyright state, review state, provenance, and supersession tracking
-- SQLite FTS5 lexical retrieval plus local concept-based retrieval and evidence-priority reranking
+- SQLite FTS5 lexical retrieval plus local concept-based retrieval, evidence-priority ordering, and bounded journey-phase reranking
 - Patient answers built only from approved passages with page, timestamp, or section citations
 - Explicit consent for stored profiles, short-lived signed access tokens, and self-service export and deletion
 - Reminders only for dates already supplied by a clinical team or appointment notice
@@ -22,7 +22,7 @@ GI-Onco Navigator connects a structured patient profile, a postoperative journey
 - Source withdrawal, quarantine, obsolescence, and version-replacement workflows
 - Non-ranking facility filtering based only on verified registration and service attributes
 - Privacy-conscious audit events, request tracing, health endpoints, and Prometheus metrics
-- Docker deployment, CI, automated tests, and an extensible 50-case benchmark
+- Docker deployment, CI, automated tests, and an extensible 60-case benchmark
 
 The default build does not connect to a large language model. It returns retrieved, reviewed evidence directly to reduce unsupported generation. A model can be added as an optional presentation layer, but it must never bypass citation, review, and safety gates.
 
