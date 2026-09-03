@@ -12,6 +12,8 @@ GI-Onco Navigator separates application code from restricted source material.
 
 Every indexed passage must preserve source identity, edition, publication date, cancer type,
 intended audience, page or timestamp, copyright status, supersession status, and review status.
+Source manifests used by the command-line pipeline and administrator API share one validated
+schema. Source identifiers are stable ASCII tokens, and a manifest cannot self-approve content.
 
 ## Public repository policy
 

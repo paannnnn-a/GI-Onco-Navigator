@@ -156,7 +156,12 @@ class PatientNavigationPlan(BaseModel):
 
 
 class EvidenceSourceCreate(BaseModel):
-    source_id: str = Field(min_length=1, max_length=128)
+    source_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        description="Stable ASCII identifier safe for logs, URLs, and chunk identifiers.",
+    )
     title: str = Field(min_length=1, max_length=500)
     evidence_type: EvidenceType
     version: str | None = None
@@ -170,6 +175,7 @@ class EvidenceSourceCreate(BaseModel):
     sha256: str | None = None
     supersedes_source_id: str | None = None
     review_status: str = "unreviewed"
+    tags: list[str] = Field(default_factory=list, max_length=50)
     metadata: dict[str, object] = Field(default_factory=dict)
 
 

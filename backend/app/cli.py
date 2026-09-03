@@ -15,8 +15,17 @@ from backend.app.knowledge import (
     extract_transcript_cues,
 )
 from backend.app.ocr import RapidOcrEngine
+from backend.app.schemas import EvidenceSourceCreate
 from backend.app.storage import Database
 from backend.app.web_ingest import extract_web_chunks, fetch_public_webpage
+
+
+def load_manifest(manifest_path: Path) -> dict[str, object]:
+    """Load and validate a source manifest using the same contract as the admin API."""
+    source = EvidenceSourceCreate.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+    manifest = source.model_dump(mode="json")
+    manifest["review_status"] = "quarantined"
+    return manifest
 
 
 def ingest_pdf(
@@ -25,7 +34,7 @@ def ingest_pdf(
     use_ocr: bool = False,
     target_database: Database | None = None,
 ) -> dict[str, object]:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = load_manifest(manifest_path)
     database = target_database or Database(get_settings().sqlite_path)
     manifest["local_filename"] = manifest.get("local_filename") or pdf_path.name
     manifest["sha256"] = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
@@ -72,7 +81,7 @@ def ingest_pdf(
 def ingest_docx(
     manifest_path: Path, docx_path: Path, target_database: Database | None = None
 ) -> dict[str, object]:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = load_manifest(manifest_path)
     database = target_database or Database(get_settings().sqlite_path)
     manifest["local_filename"] = manifest.get("local_filename") or docx_path.name
     manifest["sha256"] = hashlib.sha256(docx_path.read_bytes()).hexdigest()
@@ -110,7 +119,7 @@ def ingest_docx(
 def ingest_transcript(
     manifest_path: Path, transcript_path: Path, target_database: Database | None = None
 ) -> dict[str, object]:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = load_manifest(manifest_path)
     database = target_database or Database(get_settings().sqlite_path)
     manifest["local_filename"] = manifest.get("local_filename") or transcript_path.name
     manifest["sha256"] = hashlib.sha256(transcript_path.read_bytes()).hexdigest()
@@ -140,7 +149,7 @@ def ingest_transcript(
 
 
 def ingest_web(manifest_path: Path) -> dict[str, object]:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = load_manifest(manifest_path)
     public_url = str(manifest.get("public_url") or "")
     content = fetch_public_webpage(public_url)
     manifest["sha256"] = hashlib.sha256(content).hexdigest()
