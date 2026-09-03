@@ -18,6 +18,12 @@ capabilities, and persists application data in a named volume.
 6. Verify `/health/live`, `/health/ready`, patient workflows, admin authentication, backups, restore,
    logging, monitoring, and security headers before admitting any user.
 
+The bundled web container accepts evidence uploads up to 26 MiB so the proxy boundary is slightly
+larger than the API's enforced 25 MiB file limit. It sets a restrictive Content Security Policy,
+blocks framing, disables browser camera, microphone, and geolocation features, does not cache the
+application shell, and caches only content-hashed build assets. The external TLS proxy remains
+responsible for HSTS and public transport security.
+
 ## Required work before real patient use
 
 - Replace the shared admin secret with organization identity, role-based authorization, MFA, and
