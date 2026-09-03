@@ -39,6 +39,11 @@ def test_patient_round_trip_and_safe_empty_answer(tmp_path, monkeypatch) -> None
         f"{url}/reminders/{reminder_id}", json={"status": "completed"}, headers=headers
     )
     assert completed.json()["status"] == "completed"
+    exported = client.get(f"{url}/export", headers=headers)
+    assert exported.status_code == 200
+    assert exported.json()["patient"]["patient_id"] == access["patient_id"]
+    assert exported.json()["reminders"][0]["reminder_id"] == reminder_id
+    assert "access_token" not in exported.text
     response = client.post(
         "/api/v1/navigation/question",
         json={"question": "复诊时需要准备什么？", "patient": patient},

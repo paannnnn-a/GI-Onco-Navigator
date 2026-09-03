@@ -116,6 +116,13 @@ class PatientAccess(BaseModel):
     expires_at: datetime
 
 
+class PatientDataExport(BaseModel):
+    schema_version: str = "1.0"
+    exported_at: datetime
+    patient: PatientProfile
+    reminders: list[PatientReminder]
+
+
 def require_admin(x_admin_key: str = Header(default="")) -> None:
     if not settings.admin_api_key or not secrets.compare_digest(x_admin_key, settings.admin_api_key):
         raise HTTPException(status_code=401, detail="valid admin key required")
@@ -183,6 +190,22 @@ def get_patient(patient_id: str) -> PatientProfile:
     if patient is None:
         raise HTTPException(status_code=404, detail="patient not found")
     return patient
+
+
+@app.get(
+    "/api/v1/patients/{patient_id}/export",
+    response_model=PatientDataExport,
+    dependencies=[Depends(require_patient)],
+)
+def export_patient_data(patient_id: str) -> PatientDataExport:
+    patient = database.get_patient(patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="patient not found")
+    reminders = [PatientReminder.model_validate(row) for row in database.list_reminders(patient_id)]
+    database.log_event("patient_exported", patient_id, {"reminder_count": len(reminders)})
+    return PatientDataExport(
+        exported_at=datetime.now(UTC), patient=patient, reminders=reminders
+    )
 
 
 @app.delete(

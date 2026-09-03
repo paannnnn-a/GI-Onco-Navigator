@@ -237,6 +237,24 @@ export function App() {
     finally { setLoading(false); }
   }
 
+  async function exportRecord() {
+    if (!patientAccess) return;
+    setLoading(true); setError("");
+    try {
+      const response = await fetch(`/api/v1/patients/${patientAccess.patient_id}/export`, {
+        headers: { "Authorization": `Bearer ${patientAccess.access_token}` },
+      });
+      if (!response.ok) throw new Error("档案导出失败，请确认访问凭证仍然有效。");
+      const blob = new Blob([await response.text()], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = `gi-onco-record-${patientAccess.patient_id}.json`;
+      document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+      setRecordStatus("档案和复诊事项已导出；文件不包含访问凭证。");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "导出失败"); }
+    finally { setLoading(false); }
+  }
+
   async function addReminder() {
     if (!patientAccess || !reminderTitle.trim() || !reminderDate || !reminderSource.trim()) return;
     setLoading(true); setError("");
@@ -305,6 +323,7 @@ export function App() {
             <label className="check-field consent"><input type="checkbox" checked={saveConsent} onChange={(event) => setSaveConsent(event.target.checked)} />我明确同意将以上结构化信息保存到当前部署的服务器；不包含姓名、证件号或手机号。</label>
             <button className="primary" onClick={createPlan} disabled={loading}>{loading ? "正在整理…" : "生成导航计划"}</button>
             <button className="secondary" onClick={saveRecord} disabled={loading || !saveConsent}>保存我的档案</button>
+            {patientAccess && <button className="secondary" onClick={exportRecord} disabled={loading}>导出我的数据</button>}
             {patientAccess && <button className="danger-link" onClick={deleteRecord} disabled={loading}>删除服务器档案</button>}
             {recordStatus && <div className="record-status" role="status">{recordStatus}</div>}
             {patientAccess && <section className="reminder-editor"><h3>按诊疗团队安排记录复诊事项</h3><p>平台不会自行计算医学随访时间；请只录入预约通知或诊疗团队已经确认的日期。</p><input value={reminderTitle} onChange={(event) => setReminderTitle(event.target.value)} placeholder="事项，例如复诊或检查" /><input type="datetime-local" value={reminderDate} onChange={(event) => setReminderDate(event.target.value)} /><input value={reminderSource} onChange={(event) => setReminderSource(event.target.value)} placeholder="日期来源，例如门诊预约通知" /><button className="secondary" onClick={addReminder} disabled={loading || !reminderTitle || !reminderDate || !reminderSource}>保存事项</button>{reminders.map((reminder) => <article key={reminder.reminder_id} data-complete={reminder.status === "completed"}><div><b>{reminder.title}</b><small>{new Date(reminder.due_at).toLocaleString("zh-CN")} · {reminder.source_note}</small></div>{reminder.status === "pending" && <button onClick={() => completeReminder(reminder)}>标记完成</button>}</article>)}</section>}
