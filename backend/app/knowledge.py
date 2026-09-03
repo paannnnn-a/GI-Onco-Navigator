@@ -111,12 +111,25 @@ def extract_pdf_pages(pdf_path: str | Path, ocr: OcrEngine | None = None) -> lis
     for index, page in enumerate(reader.pages, start=1):
         extracted = normalize_text(page.extract_text() or "")
         needs_ocr = looks_corrupted(extracted)
-        method = "pdf_text"
-        if needs_ocr and ocr is not None:
-            extracted = normalize_text(ocr.recognize_pdf_page(path, index))
-            needs_ocr = looks_corrupted(extracted)
-            method = "ocr"
-        pages.append(ExtractedPage(index, extracted, method, needs_ocr))
+        pages.append(ExtractedPage(index, extracted, "pdf_text", needs_ocr))
+    if ocr is not None:
+        pending = [page.page_number for page in pages if page.needs_ocr]
+        batch_method = getattr(ocr, "recognize_pdf_pages", None)
+        if callable(batch_method):
+            recognized = batch_method(path, pending)
+        else:
+            recognized = {number: ocr.recognize_pdf_page(path, number) for number in pending}
+        pages = [
+            ExtractedPage(
+                page.page_number,
+                normalize_text(recognized.get(page.page_number, "")),
+                "ocr",
+                looks_corrupted(normalize_text(recognized.get(page.page_number, ""))),
+            )
+            if page.needs_ocr
+            else page
+            for page in pages
+        ]
     return pages
 
 

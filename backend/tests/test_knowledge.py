@@ -6,6 +6,7 @@ from backend.app.knowledge import (
     chunk_pages,
     chunk_transcript,
     extract_docx_paragraphs,
+    extract_pdf_pages,
     extract_transcript_cues,
     looks_corrupted,
 )
@@ -56,6 +57,31 @@ def test_pdf_audit_contains_metrics_but_no_document_text(tmp_path) -> None:
     assert result["pages_needing_ocr"] == [1]
     assert result["readable_text_pages"] == 0
     assert "text" not in result
+
+
+def test_pdf_extraction_uses_batch_ocr_when_available(tmp_path) -> None:
+    path = tmp_path / "scan.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=100, height=100)
+    writer.add_blank_page(width=100, height=100)
+    with path.open("wb") as output:
+        writer.write(output)
+
+    class BatchOcr:
+        def __init__(self) -> None:
+            self.requested: list[int] = []
+
+        def recognize_pdf_pages(self, _path, page_numbers):
+            self.requested = list(page_numbers)
+            return {number: "本地识别出的患者教育文本。" * 5 for number in self.requested}
+
+        def recognize_pdf_page(self, _path, _page_number):
+            raise AssertionError("single-page OCR should not be used")
+
+    engine = BatchOcr()
+    pages = extract_pdf_pages(path, engine)
+    assert engine.requested == [1, 2]
+    assert all(page.method == "ocr" and not page.needs_ocr for page in pages)
 
 
 def test_transcript_preserves_video_timestamp(tmp_path) -> None:
