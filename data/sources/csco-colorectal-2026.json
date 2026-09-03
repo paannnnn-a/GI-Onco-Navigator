@@ -14,5 +14,9 @@
   "supersedes_source_id": "csco-colorectal-2025",
   "review_status": "quarantined_pending_ocr",
   "tags": ["CSCO", "结直肠癌", "临床指南"],
-  "metadata": {"pages": 174, "redistribute_original": false}
+  "metadata": {
+    "pages": 174,
+    "redistribute_original": false,
+    "extraction_audit": {"readable_text_pages": 0, "pages_needing_ocr": 174}
+  }
 }

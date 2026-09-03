@@ -8,7 +8,7 @@ class RapidOcrEngine:
 
     def __init__(self, zoom: float = 2.5) -> None:
         try:
-            import fitz
+            import pymupdf as fitz
             from rapidocr_onnxruntime import RapidOCR
         except ImportError as exc:
             raise RuntimeError(

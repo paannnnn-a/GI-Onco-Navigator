@@ -7,6 +7,7 @@ from pathlib import Path
 
 from backend.app.config import get_settings
 from backend.app.knowledge import (
+    audit_pdf,
     chunk_pages,
     chunk_transcript,
     extract_docx_paragraphs,
@@ -154,6 +155,10 @@ def main() -> None:
     ingest.add_argument("manifest", type=Path)
     ingest.add_argument("pdf", type=Path)
     ingest.add_argument("--ocr", action="store_true", help="run fully local OCR on unreadable pages")
+    audit = subparsers.add_parser(
+        "audit-pdf", help="report extraction quality without storing document content"
+    )
+    audit.add_argument("pdf", type=Path)
     ingest_docx_parser = subparsers.add_parser("ingest-docx")
     ingest_docx_parser.add_argument("manifest", type=Path)
     ingest_docx_parser.add_argument("docx", type=Path)
@@ -171,6 +176,8 @@ def main() -> None:
                 indent=2,
             )
         )
+    elif args.command == "audit-pdf":
+        print(json.dumps(audit_pdf(args.pdf), ensure_ascii=False, indent=2))
     elif args.command == "ingest-docx":
         print(json.dumps(ingest_docx(args.manifest, args.docx), ensure_ascii=False, indent=2))
     elif args.command == "ingest-transcript":

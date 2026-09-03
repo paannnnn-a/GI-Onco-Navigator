@@ -14,5 +14,9 @@
   "supersedes_source_id": null,
   "review_status": "quarantined_pending_ocr",
   "tags": ["胃癌", "患者教育"],
-  "metadata": {"pages": 54, "redistribute_original": false}
+  "metadata": {
+    "pages": 54,
+    "redistribute_original": false,
+    "extraction_audit": {"readable_text_pages": 7, "pages_needing_ocr": 47}
+  }
 }

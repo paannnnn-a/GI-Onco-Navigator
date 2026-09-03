@@ -10,6 +10,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 coverage/
+tmp/
 .coverage
 *.db
 data/private/

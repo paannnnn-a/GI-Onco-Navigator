@@ -14,5 +14,10 @@
   "supersedes_source_id": null,
   "review_status": "quarantined_extraction_quality",
   "tags": ["结直肠癌", "患者教育"],
-  "metadata": {"pages": 132, "redistribute_original": false}
+  "metadata": {
+    "pages": 132,
+    "redistribute_original": false,
+    "extraction_audit": {"readable_text_pages": 0, "pages_needing_ocr": 132},
+    "visible_print_date": "2016-08-22"
+  }
 }

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+import statistics
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +51,16 @@ class OcrEngine(Protocol):
     def recognize_pdf_page(self, pdf_path: Path, page_number: int) -> str: ...
 
 
+def _is_expected_letter(char: str) -> bool:
+    codepoint = ord(char)
+    return (
+        char.isascii()
+        or 0x3400 <= codepoint <= 0x9FFF  # CJK ideographs
+        or 0xF900 <= codepoint <= 0xFAFF  # CJK compatibility ideographs
+        or 0x0370 <= codepoint <= 0x03FF  # Greek symbols used in scientific text
+    )
+
+
 def normalize_text(text: str) -> str:
     text = text.replace("\x00", " ")
     text = re.sub(r"[ \t]+", " ", text)
@@ -61,7 +73,35 @@ def looks_corrupted(text: str) -> bool:
         return True
     control_chars = sum(1 for char in text if ord(char) < 32 and char not in "\n\r\t")
     replacement_like = sum(text.count(char) for char in ("�", "Ӌ", "δ", "൭", "Ҩ"))
-    return control_chars > 3 or replacement_like / max(len(text), 1) > 0.01
+    letters = [char for char in text if unicodedata.category(char).startswith("L")]
+    unexpected_letters = sum(not _is_expected_letter(char) for char in letters)
+    unexpected_ratio = unexpected_letters / max(len(letters), 1)
+    return (
+        control_chars > 3
+        or replacement_like / max(len(text), 1) > 0.01
+        or (len(letters) >= 20 and unexpected_ratio > 0.03)
+    )
+
+
+def audit_pdf(pdf_path: str | Path) -> dict[str, object]:
+    """Return non-content PDF extraction metrics safe to store in source metadata."""
+    path = Path(pdf_path)
+    pages = extract_pdf_pages(path)
+    character_counts = [len(page.text) for page in pages]
+    pages_needing_ocr = [page.page_number for page in pages if page.needs_ocr]
+    return {
+        "filename": path.name,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "size_bytes": path.stat().st_size,
+        "pages": len(pages),
+        "text_characters": sum(character_counts),
+        "median_characters_per_page": (
+            int(statistics.median(character_counts)) if character_counts else 0
+        ),
+        "readable_text_pages": len(pages) - len(pages_needing_ocr),
+        "pages_needing_ocr_count": len(pages_needing_ocr),
+        "pages_needing_ocr": pages_needing_ocr,
+    }
 
 
 def extract_pdf_pages(pdf_path: str | Path, ocr: OcrEngine | None = None) -> list[ExtractedPage]:

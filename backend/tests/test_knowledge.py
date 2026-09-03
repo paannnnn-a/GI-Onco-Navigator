@@ -1,5 +1,8 @@
+from pypdf import PdfWriter
+
 from backend.app.knowledge import (
     ExtractedPage,
+    audit_pdf,
     chunk_pages,
     chunk_transcript,
     extract_docx_paragraphs,
@@ -11,7 +14,9 @@ from backend.app.knowledge import (
 def test_corrupt_text_detection() -> None:
     assert looks_corrupted("")
     assert looks_corrupted("δ൭Ҩ" * 30)
+    assert looks_corrupted("໇ᆀ൭ҨழႶૌ౦" * 20)
     assert not looks_corrupted("这是一段用于患者教育的正常中文文本。" * 10)
+    assert not looks_corrupted("HER2、PD-L1、MSI-H/dMMR 与 β-catenin 是常见医学写法。" * 5)
 
 
 def test_chunk_preserves_page_locator() -> None:
@@ -37,6 +42,20 @@ def test_extract_docx_paragraphs(tmp_path) -> None:
     blocks = extract_docx_paragraphs(path)
     assert [block.page_number for block in blocks] == [1, 3]
     assert all(block.method == "docx_paragraph" for block in blocks)
+
+
+def test_pdf_audit_contains_metrics_but_no_document_text(tmp_path) -> None:
+    path = tmp_path / "blank.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=100, height=100)
+    with path.open("wb") as output:
+        writer.write(output)
+
+    result = audit_pdf(path)
+    assert result["pages"] == 1
+    assert result["pages_needing_ocr"] == [1]
+    assert result["readable_text_pages"] == 0
+    assert "text" not in result
 
 
 def test_transcript_preserves_video_timestamp(tmp_path) -> None:

@@ -14,5 +14,9 @@
   "supersedes_source_id": null,
   "review_status": "quarantined_pending_ocr",
   "tags": ["CSCO", "结直肠癌", "临床指南"],
-  "metadata": {"pages": 160, "redistribute_original": false}
+  "metadata": {
+    "pages": 160,
+    "redistribute_original": false,
+    "extraction_audit": {"readable_text_pages": 0, "pages_needing_ocr": 160}
+  }
 }
