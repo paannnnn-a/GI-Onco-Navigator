@@ -16,7 +16,7 @@ dependencies = [
   "pydantic-settings>=2.10,<3",
   "sqlalchemy>=2.0,<3",
   "python-multipart>=0.0.20,<1",
-  "pypdf>=5.9,<7",
+  "pypdf>=5.9,<8",
   "python-docx>=1.2,<2",
 ]
 
